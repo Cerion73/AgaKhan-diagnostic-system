@@ -1,0 +1,41 @@
+<!-- signup.html -->
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="auth-card">
+    <h1>Register Patient</h1>
+    <p class="lead">Register a patient to get them ready for examination.</p>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Add Medical Imaging Scans</h5>
+            <button class="btn btn-outline-primary" onclick="showScanForm()">
+                Add Laboratory Test Results
+            </button>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Record Clinical Results</h5>
+            <button class="btn btn-outline-primary" onclick="showClinicalForm()">
+                Add Clinical Results
+            </button>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <button class="btn btn-primary">Complete Registration</button>
+    </div>
+</div>
+
+<script>
+    function showScanForm() {
+        // Implement scan form logic
+    }
+
+    function showClinicalForm() {
+        // Implement clinical form logic
+    }
+</script>
+{% endblock %}

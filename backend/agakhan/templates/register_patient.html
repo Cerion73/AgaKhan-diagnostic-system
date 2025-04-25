@@ -1,0 +1,98 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Register Patient</h4>
+        </div>
+        <div class="card-body">
+            <form id="patientForm">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label">Serial Number</label>
+                        <input type="text" class="form-control" name="serial_no" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" name="email" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Location</label>
+                        <select class="form-select" name="location" required>
+                            <option value="">Select Location</option>
+                            <!-- Dynamically loaded -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Gender</label>
+                        <select class="form-select" name="gender" required>
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="I">Intersex</option>
+                            <option value="O">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Date of Birth</label>
+                        <input type="date" class="form-control" name="dob" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" name="phone" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Submit Registration</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('patientForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = {
+        serial_no: e.target.serial_no.value,
+        name: e.target.name.value,
+        email: e.target.email.value,
+        location: e.target.location.value,
+        gender: e.target.gender.value,
+        dob: e.target.dob.value,
+        phone: e.target.phone.value
+    };
+
+    try {
+        const response = await fetch('/api/patients/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+            window.location.href = '/dashboard/';
+        } else {
+            const errorData = await response.json();
+            alert(`Error: ${JSON.stringify(errorData)}`);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Registration failed');
+    }
+});
+</script>
+{% endblock %}
