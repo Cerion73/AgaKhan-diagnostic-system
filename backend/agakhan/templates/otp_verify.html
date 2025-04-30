@@ -1,0 +1,27 @@
+<!-- templates/otp_verify.html -->
+{% extends "dashboard.html" %}
+
+{% block title %}Verify OTP{% endblock %}
+
+{% block content %}
+<div class="aga-card">
+    <h2 style="color: var(--primary-color); margin-bottom: 1.5rem;">OTP Verification</h2>
+    <form method="post">
+        {% csrf_token %}
+        <input type="text" name="otp" class="form-control" 
+               placeholder="Enter 6-digit OTP" pattern="\d{6}" required>
+        
+        {% if error %}
+        <div style="color: #dc3545; margin-bottom: 1rem;">{{ error }}</div>
+        {% endif %}
+        
+        <button type="submit" class="btn-primary">Verify OTP</button>
+    </form>
+    
+    <div style="margin-top: 1rem; text-align: center;">
+        <a href="#" style="color: var(--primary-color); text-decoration: none;">
+            Resend OTP
+        </a>
+    </div>
+</div>
+{% endblock %}

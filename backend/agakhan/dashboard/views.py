@@ -73,9 +73,9 @@ class PractitionerViewset(ModelViewSet):
             except Exception as e:
                 # Optional logging here
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='signup.html')
-            return Response({'message': 'Sign-in successful, welcome!'}, template_name='otp_verify',status=status.HTTP_200_OK)
+            return Response({'message': 'Sign-in successful, welcome!'}, template_name='otp_verify.html',status=status.HTTP_200_OK)
         else:
-            return Response({'message': 'Wrong credentials. Try again.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'message': 'Wrong credentials. Try again.'}, status=status.HTTP_403_FORBIDDEN, template_name='signin.html')
         
     @action(methods=['get', 'post'], detail=False, url_name='otp_request', url_path='otp_request.html', renderer_classes = [TemplateHTMLRenderer])
     def otp_request(self, request):
@@ -110,11 +110,9 @@ class PractitionerViewset(ModelViewSet):
                     )
 
                     if response.status_code == 200:
-                        return Response({'message': 'OTP sent successfully.'}, template_name='otp_verify.html')
+                        return Response({'message': 'OTP sent successfully.'}, template_name='otp_verify.html', status=status.HTTP_403_FORBIDDEN)
 
-                    return Response({'error': 'Failed to send OTP. Please try again.'},
-                                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                        template_name='otp_request.html')
+                    return Response({'error': 'Failed to send OTP. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='otp_request.html')
 
             except Exception as e:
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='otp_request.html')
@@ -127,7 +125,7 @@ class PractitionerViewset(ModelViewSet):
         serializer = PractitionerSerializer(data=request.data)
 
         if not serializer.is_valid():
-            return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST, template_name='otp_verify.html')
         
         otp = serializer.validated_data['otp']
         try:

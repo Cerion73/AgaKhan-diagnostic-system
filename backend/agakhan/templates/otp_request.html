@@ -1,0 +1,20 @@
+<!-- templates/otp_request.html -->
+{% extends 'dashboard.html' %}
+{% block title %}Request OTP{% endblock %}
+
+{% block content %}
+<div class="aga-card">
+    <h2 style="color: var(--primary-color); margin-bottom: 1.5rem;">Request OTP</h2>
+    <form method="post">
+        {% csrf_token %}
+        <input type="tel" name="phone" class="form-control" 
+               placeholder="Enter registered phone number" required>
+        
+        <button type="submit" class="btn-primary">Send OTP</button>
+    </form>
+    
+    <div style="margin-top: 1rem; text-align: center;">
+        
+    </div>
+</div>
+{% endblock %}

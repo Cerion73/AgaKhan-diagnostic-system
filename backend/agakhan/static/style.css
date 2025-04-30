@@ -4,6 +4,11 @@ body {
     padding: 0;
     background: #fafafa;
 }
+.navbar-brand {
+    border-radius: 12px;
+    position: relative;
+}
+
 .header {
     display: flex;
     justify-content: space-between;
