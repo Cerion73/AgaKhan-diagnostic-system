@@ -4,10 +4,10 @@ body {
     padding: 0;
     background: #fafafa;
 }
-.navbar-brand {
-    border-radius: 12px;
+/* .navbar-brand {
+    border-radius: 90px;
     position: relative;
-}
+} */
 
 .header {
     display: flex;

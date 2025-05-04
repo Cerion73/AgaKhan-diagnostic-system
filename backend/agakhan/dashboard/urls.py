@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/', include(rest_framework.urls)),
     path('api-auth/', include(rest_framework.urls)),
     path('', include(router.urls)),
+    path('api/signup/', PractitionerViewset.as_view({'post': 'signup'})),
     # path('auth/signup/', views.SignUpView.as_view(), name='signup'),
     # path('auth/login/', views.LoginView.as_view(), name='login'),
     # path('branches/', views.BranchListView.as_view(), name='branch-list'),

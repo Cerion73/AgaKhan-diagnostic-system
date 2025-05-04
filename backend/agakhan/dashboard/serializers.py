@@ -8,6 +8,7 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
     branch = serializers.PrimaryKeyRelatedField(queryset=Branch.objects.all())
+    gender = serializers.ChoiceField(choices=GENDER_CHOICES)
 
     class Meta:
         model = CustomUser
@@ -18,12 +19,13 @@ class UserSerializer(serializers.ModelSerializer):
             'phone',
             'password',
             'confirm_password',
-            'branch'
+            'branch',
+            'gender'
         ]
-        extra_kwargs = {
-            'first_name': {'required': True},
-            'last_name': {'required': True},
-        }
+        # extra_kwargs = {
+        #     'first_name': {'required': True},
+        #     'last_name': {'required': True},
+        # }
 
     def validate(self, data):
         if data['password'] != data['confirm_password']:

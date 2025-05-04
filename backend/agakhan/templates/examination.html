@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block head %}
+<style>
+    .exam-card {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin: 2rem auto;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+    }
+
+    .nav-pills .nav-link {
+        color: #2c3e50;
+        font-weight: 500;
+        border-radius: 8px;
+        margin-right: 1rem;
+    }
+
+    .nav-pills .nav-link.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .form-section {
+        border-bottom: 1px solid #eee;
+        padding: 1.5rem 0;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #34495e;
+        margin-bottom: 0.5rem;
+    }
+
+    .radio-group {
+        display: flex;
+        gap: 2rem;
+        margin-top: 0.5rem;
+    }
+
+    .radio-group .form-check-input {
+        margin-right: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Navigation -->
+    <nav class="nav nav-pills justify-content-between mb-4">
+        <div class="d-flex">
+            <a class="nav-link active" href="#">Examination</a>
+            <a class="nav-link" href="#">Clinical Assessment</a>
+            <a class="nav-link" href="#">Lab Tests</a>
+            <a class="nav-link" href="#">Imaging Scans</a>
+            <a class="nav-link" href="#">Generate Report</a>
+        </div>
+        <a class="nav-link text-danger" href="#"><i class="bi bi-box-arrow-right"></i> Sign out</a>
+    </nav>
+
+    <div class="exam-card">
+        <h3 class="mb-4">Patient Examination Form</h3>
+
+        <form method="post">
+            {% csrf_token %}
+            
+            <!-- Patient Info -->
+            <div class="row form-section">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Serial No</label>
+                    <input type="text" class="form-control" value="ABC2025" readonly>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" value="James Smith" readonly>
+                </div>
+            </div>
+
+            <!-- Health Habits -->
+            <div class="row form-section">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Exercise Habits</label>
+                    <select class="form-select" name="exercise" required>
+                        <option value="">Select...</option>
+                        <option>Regular</option>
+                        <option>Occasional</option>
+                        <option>Sedentary</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Smoking Habits</label>
+                    <select class="form-select" name="smoking" required>
+                        <option value="">Select...</option>
+                        <option>Current Smoker</option>
+                        <option>Former Smoker</option>
+                        <option>Never Smoked</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Family Heart Disease History</label>
+                    <select class="form-select" name="family_history" required>
+                        <option value="">Select...</option>
+                        <option>Yes</option>
+                        <option>No</option>
+                        <option>Unknown</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Alcohol Consumption</label>
+                    <select class="form-select" name="alcohol" required>
+                        <option value="">Select...</option>
+                        <option>Regular</option>
+                        <option>Social</option>
+                        <option>Never</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Quantitative Measures -->
+            <div class="row form-section">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Average Sleep Hours</label>
+                    <input type="number" class="form-control" name="sleep" step="0.1" value="7.0" required>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Stress Levels</label>
+                    <select class="form-select" name="stress" required>
+                        <option value="">Select...</option>
+                        <option>Low</option>
+                        <option>Moderate</option>
+                        <option>High</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Sugar Consumption -->
+            <div class="form-section">
+                <label class="form-label">Sugar Consumption Habits</label>
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="sugar" id="high" value="high" required>
+                    <label class="btn btn-outline-secondary" for="high">High</label>
+
+                    <input type="radio" class="btn-check" name="sugar" id="moderate" value="moderate">
+                    <label class="btn btn-outline-secondary" for="moderate">Moderate</label>
+
+                    <input type="radio" class="btn-check" name="sugar" id="low" value="low">
+                    <label class="btn btn-outline-secondary" for="low">Low</label>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary btn-lg px-5">Submit</button>
+                <div class="mt-3">
+                    <a href="#" class="text-muted">Already registered patient? Clinical Assessment</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

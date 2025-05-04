@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from datetime import date
 from django.utils import timezone
 
@@ -30,33 +30,53 @@ YN_CHOICES = (
     ('yes', 'Yes')
 )
 
+class CustomUserManager(BaseUserManager):
+    def create_user(self, serial_no, password=None, **extra_fields):
+        if not serial_no:
+            raise ValueError('The Serial No must be set')
+        user = self.model(serial_no=serial_no, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, serial_no, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        return self.create_user(serial_no, password, **extra_fields)
 
 class CustomUser(AbstractUser):
-    phone = models.CharField(max_length=20, unique=True, null=False)
+    username = None # remove username
+    objects = CustomUserManager() # use the custom manager
+    phone = models.CharField(max_length=20, null=False)
     branch = models.ForeignKey('Branch', on_delete=models.SET_NULL, null=True)
-    serial_no = models.CharField(max_length=200, unique=True, default='ABC123')
-    gender = models.CharField(max_length=200, choices=GENDER_CHOICES, default='female')
+    serial_no = models.CharField(max_length=200, unique=True, default='ABC123', primary_key=True)
+    gender = models.CharField(max_length=200, choices=GENDER_CHOICES, default='F')
+    
 
     USERNAME_FIELD = 'serial_no'
-    REQUIRED_FIELDS = ['username', 'first_name', 'last_name', 'phone']
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'phone']
 
-    # def __str__(self):
-    #     return f'{self.get_full_name} - {self.branch} - {self.serial_no}'
+    def __str__(self):
+        return f'{self.first_name} - {self.branch} - {self.serial_no}'
     
 
 class Practitioner(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     otp = models.CharField(max_length=6)
     verified = models.BooleanField(default=False)
-    created_at = models.DateTimeField(default=timezone.now())
+    created_at = models.DateTimeField(default=timezone.now)
 
 
-    # def __str__(self):
-    #     return f'{self.user.first_name} {self.user.branch}{self.user.serial_no}'
+    def __str__(self):
+        return f'{self.user.first_name} - {self.user.branch} - {self.user.serial_no}'
 
 class Branch(models.Model):
+    branch_id = models.CharField(max_length=100, unique=True, null=False, default='NRB')
     name = models.CharField(max_length=100)
     address = models.TextField()
+
+    def __str__(self):
+        return f'{self.name} - {self.branch_id}'
 
 class Patient(models.Model):
     # serial_no = models.CharField(max_length=20, unique=True)
@@ -70,8 +90,8 @@ class Patient(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
-    # def __str__(self):
-    #     return f'{self.user.first_name}{self.user.branch}{self.user.serial_no}'
+    def __str__(self):
+        return f'{self.user.first_name} - {self.user.branch} - {self.user.serial_no}'
 
 
 class MedicalScan(models.Model):
@@ -110,6 +130,6 @@ class Examination(models.Model):
     stress_levels = models.CharField(max_length=50, choices=HABITS_CHOICES, default='low')
     date = models.DateTimeField(auto_now_add=True)
 
-    # def __str__(self):
-    #     return f'{self.patient.first_name} - {self.patient.branch} - {self.patient.serial_no}'
+    def __str__(self):
+        return f'{self.patient.first_name} - {self.patient.branch} - {self.patient.serial_no}'
     

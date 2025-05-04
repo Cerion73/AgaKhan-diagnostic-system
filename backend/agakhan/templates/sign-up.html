@@ -36,6 +36,8 @@
             <h2 class="welcome-text text-center">Welcome</h2>
             <p class="instruction-text text-center">To proceed with the diagnostic process, sign up to your account below:</p>
             
+
+            {% csrf token %}
             <form id="signupForm">
                 <div class="mb-3">
                     <label class="form-label">Name</label>
@@ -81,7 +83,7 @@
             </form>
 
             <p class="text-center mt-3">
-                Already have an account? <a href="/login/">Sign in</a>
+                Already have an account? <a href="{% url 'signin' %}">Sign in</a>
             </p>
         </div>
     </div>
@@ -102,7 +104,7 @@
             };
 
             try {
-                const response = await fetch('/api/signup/', {
+                const response = await fetch('http://127.0.0.1:8000/users/signup/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

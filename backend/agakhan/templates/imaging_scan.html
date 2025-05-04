@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block head %}
+<style>
+    .imaging-card {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin: 2rem auto;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+    }
+
+    .nav-pills .nav-link {
+        color: #2c3e50;
+        font-weight: 500;
+        border-radius: 8px;
+        margin-right: 1rem;
+    }
+
+    .nav-pills .nav-link.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .scan-type {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: transform 0.3s ease;
+    }
+
+    .scan-type:hover {
+        transform: translateY(-5px);
+        border-color: #3498db;
+    }
+
+    .scan-title {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+
+    .prediction-btn {
+        width: 100%;
+        padding: 0.8rem;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Navigation -->
+    <nav class="nav nav-pills justify-content-between mb-4">
+        <div class="d-flex">
+            <a class="nav-link" href="#">Examination</a>
+            <a class="nav-link" href="#">Clinical Assessment</a>
+            <a class="nav-link" href="#">Lab Tests</a>
+            <a class="nav-link active" href="#">Imaging Scans</a>
+            <a class="nav-link" href="#">Generate Report</a>
+        </div>
+        <a class="nav-link text-danger" href="#"><i class="bi bi-box-arrow-right"></i> Sign out</a>
+    </nav>
+
+    <div class="imaging-card">
+        <div class="row">
+            <!-- ECG Section -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="scan-type">
+                    <h4 class="scan-title">ECG Readings</h4>
+                    <button class="btn btn-outline-primary prediction-btn">
+                        Generate Disease Prediction
+                    </button>
+                </div>
+            </div>
+
+            <!-- MRI Section -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="scan-type">
+                    <h4 class="scan-title">MRI Imaging</h4>
+                    <button class="btn btn-outline-primary prediction-btn">
+                        Generate Disease Prediction
+                    </button>
+                </div>
+            </div>
+
+            <!-- CT Scans -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="scan-type">
+                    <h4 class="scan-title">CT-SCANS</h4>
+                    <button class="btn btn-outline-primary prediction-btn">
+                        Generate Disease Prediction
+                    </button>
+                </div>
+            </div>
+
+            <!-- X-Rays -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="scan-type">
+                    <h4 class="scan-title">CHEST X-RAYS</h4>
+                    <button class="btn btn-outline-primary prediction-btn">
+                        Generate Disease Prediction
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Final Report Generation -->
+        <div class="text-center mt-5">
+            <h5 class="text-muted mb-3">Done with imaging?</h5>
+            <button class="btn btn-success btn-lg px-5">
+                <i class="bi bi-file-earmark-medical"></i> Generate Reports
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block head %}
+<style>
+    .dashboard-card {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .section-title {
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+    }
+
+    .action-list {
+        list-style: none;
+        padding-left: 0;
+    }
+
+    .action-item {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .btn-custom {
+        padding: 0.5rem 1.5rem;
+        border-radius: 25px;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Register Patient Card -->
+    <div class="dashboard-card">
+        <h2 class="section-title">Register Patient</h2>
+        <p class="text-muted mb-4">Register a patient to get them ready for examination.</p>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="action-item">
+                    <div>
+                        <h5>Add Record</h5>
+                        <p class="text-muted mb-0">Create new patient record</p>
+                    </div>
+                    <a href="{% url 'register_patient' %}" class="btn btn-primary btn-custom">
+                        <i class="bi bi-person-plus"></i> Add
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="action-item">
+                    <div>
+                        <h5>Add Clinical Results</h5>
+                        <p class="text-muted mb-0">Record clinical findings</p>
+                    </div>
+                    <a href="{% url 'add_clinical' %}" class="btn btn-success btn-custom">
+                        <i class="bi bi-clipboard2-plus"></i> Add
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medical Imaging Card -->
+    <div class="dashboard-card">
+        <h2 class="section-title">Add Medical Imaging Scans</h2>
+        <p class="text-muted mb-4">Fill out scan results and report.</p>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="action-item">
+                    <div>
+                        <h5>Add Laboratory Test Results</h5>
+                        <p class="text-muted mb-0">Record patient's lab test results</p>
+                    </div>
+                    <a href="{% url 'add_lab' %}" class="btn btn-info btn-custom">
+                        <i class="bi bi-file-earmark-medical"></i> Add
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clinical Results Card -->
+    <div class="dashboard-card">
+        <h2 class="section-title">Record Clinical Results</h2>
+        <div class="text-center">
+            <a href="{% url 'clinical_results' %}" class="btn btn-warning btn-lg">
+                <i class="bi bi-clipboard2-pulse"></i> Start Recording
+            </a>
+        </div>
+    </div>
+
+    <!-- Staff Registration Card -->
+    <div class="dashboard-card">
+        <h2 class="section-title">Register Staff</h2>
+        <p class="text-muted mb-4">Register new staff to the system.</p>
+        <a href="{% url 'signup' %}" class="btn btn-danger btn-custom">
+            <i class="bi bi-person-badge"></i> Register Now
+        </a>
+    </div>
+</div>
+{% endblock %}

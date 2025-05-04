@@ -6,7 +6,8 @@
 {% block content %}
 <div class="aga-card">
     <h2 style="color: var(--primary-color); margin-bottom: 1.5rem;">OTP Verification</h2>
-    <form method="post">
+    <form id="verify_form" method="post">
+        <label for="otp">Your One Time Password (OTP) for {{serial_no}} has be sent on {{phone_number}}</label>
         {% csrf_token %}
         <input type="text" name="otp" class="form-control" 
                placeholder="Enter 6-digit OTP" pattern="\d{6}" required>
@@ -19,9 +20,43 @@
     </form>
     
     <div style="margin-top: 1rem; text-align: center;">
-        <a href="#" style="color: var(--primary-color); text-decoration: none;">
+        <a href="{% url 'user-otp_verify.html' %}" style="color: var(--primary-color); text-decoration: none;">
             Resend OTP
         </a>
     </div>
 </div>
+<script>
+
+    // Add JavaScript to handle form submission and branch loading
+    document.getElementById('verify_form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            otp: e.target.otp.value,
+            phone_number: phone_number,
+            otp: otp,
+
+        };
+
+        try {
+            const response = await fetch('http://127.0.0.1:8000/users/otp_verify/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                window.location.href = '/dashboard/';
+            } else {
+                const errorData = await response.json();
+                alert(`Error: ${errorData.detail || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred during registration');
+        }
+    });
+</script>
 {% endblock %}

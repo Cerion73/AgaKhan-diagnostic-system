@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block head %}
+<style>
+    .lab-card {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin: 2rem auto;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        max-width: 800px;
+    }
+
+    .nav-pills .nav-link {
+        color: #2c3e50;
+        font-weight: 500;
+        border-radius: 8px;
+        margin-right: 1rem;
+    }
+
+    .nav-pills .nav-link.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .patient-info {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #34495e;
+        margin-bottom: 0.5rem;
+    }
+
+    .input-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .input-group input {
+        height: 45px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Navigation -->
+    <nav class="nav nav-pills justify-content-between mb-4">
+        <div class="d-flex">
+            <a class="nav-link" href="#">Examination</a>
+            <a class="nav-link" href="#">Clinical Assessment</a>
+            <a class="nav-link active" href="#">Lab Tests</a>
+            <a class="nav-link" href="#">Imaging Scans</a>
+            <a class="nav-link" href="#">Generate Report</a>
+        </div>
+        <a class="nav-link text-danger" href="#"><i class="bi bi-box-arrow-right"></i> Sign out</a>
+    </nav>
+
+    <div class="lab-card">
+        <div class="patient-info">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Serial No</label>
+                    <input type="text" class="form-control-plaintext" value="ABC2025" readonly>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control-plaintext" value="James Smith" readonly>
+                </div>
+            </div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <label class="form-label">Low HDL Cholesterol</label>
+                        <select class="form-select" name="hdl" required>
+                            <option value="">Select...</option>
+                            <option>Normal</option>
+                            <option>Borderline</option>
+                            <option>High Risk</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <label class="form-label">High LDL Cholesterol</label>
+                        <select class="form-select" name="ldl" required>
+                            <option value="">Select...</option>
+                            <option>Normal</option>
+                            <option>Borderline</option>
+                            <option>High Risk</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <label class="form-label">Cholesterol Level</label>
+                        <input type="number" class="form-control" name="cholesterol" step="0.1" value="7.0" required>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <label class="form-label">Triglyceride Level</label>
+                        <input type="number" class="form-control" name="triglyceride" step="0.1" value="7.0" required>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <label class="form-label">CRP Level</label>
+                        <input type="number" class="form-control" name="crp" step="0.1" value="7.0" required>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <label class="form-label">Fasting Blood Sugar</label>
+                        <input type="number" class="form-control" name="blood_sugar" step="0.1" value="7.0" required>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="input-group">
+                        <label class="form-label">Homocysteine Level</label>
+                        <input type="number" class="form-control" name="homocysteine" step="0.1" value="7.0" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">Submit</button>
+                <a href="#" class="btn btn-outline-info btn-lg mt-3">
+                    See diagnosis prediction: View Prediction
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
