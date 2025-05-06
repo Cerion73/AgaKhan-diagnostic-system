@@ -9,8 +9,9 @@
             <h2 class="welcome-text text-center">Welcome</h2>
             <p class="instruction-text text-center">To proceed with the diagnostic process, sign up to your account below:</p>
             
-            {% csrf_token %}
+            
             <form id="signupForm">
+                {% csrf_token %}
                 <div class="mb-3">
                     <label class="form-label">Name</label>
                     <div class="row g-2">
@@ -68,7 +69,7 @@
             </form>
 
             <p class="text-center mt-3">
-                Already have an account? <a href="#">Sign in</a>
+                Already have an account? <a href="{% url 'users-signin' %}">Sign in</a>
             </p>
         </div>
     </div>
@@ -116,12 +117,10 @@
                     },
                     body: JSON.stringify(formData),
                 });
-                
+
                 console.log(response)
                 if (response.ok) {
-                    // window.location.href = '/home/';
-                    const res = response.body
-                    console.log(res)
+                    window.location.href = "{% url 'users-otp_verify' %}";
                 } else {
                     const errorData = await response.json();
                     alert(`Error: ${errorData.detail || 'Unknown error'}`);

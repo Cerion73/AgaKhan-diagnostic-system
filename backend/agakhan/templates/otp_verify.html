@@ -1,13 +1,24 @@
 <!-- templates/otp_verify.html -->
 {% extends "dashboard.html" %}
-
+{% load static %}
 {% block title %}Verify OTP{% endblock %}
 
 {% block content %}
 <div class="aga-card">
     <h2 style="color: var(--primary-color); margin-bottom: 1.5rem;">OTP Verification</h2>
     <form id="verify_form" method="post">
-        <label for="otp">Your One Time Password (OTP) for {{serial_no}} has be sent on {{phone_number}}</label>
+        <!-- Hidden inputs for server values -->
+        <input type="hidden" name="serial_no" value="{{ serial_no }}">
+        <input type="hidden" name="phone_number" value="{{ phone_number }}">
+
+        <!-- Input for users -->
+         {{ otp_data }}
+         {{ serial_no }}
+         {{ phone_number }}
+         {{ practitioner_user.user.serial_no }}
+        <p>Serial No: {{ serial_no }}</p>
+        <p>Phone Number: {{ phone_number }}</p>
+        <label for="otp">Your {{serial_no}} One Time Password (OTP) has be sent on {{phone_number}}</label>
         {% csrf_token %}
         <input type="text" name="otp" class="form-control" 
                placeholder="Enter 6-digit OTP" pattern="\d{6}" required>
@@ -20,21 +31,36 @@
     </form>
     
     <div style="margin-top: 1rem; text-align: center;">
-        <a href="{% url 'user-otp_verify.html' %}" style="color: var(--primary-color); text-decoration: none;">
+        <a href="{% url 'users-otp_verify' %}" style="color: var(--primary-color); text-decoration: none;" id="resend_otp">
             Resend OTP
         </a>
     </div>
 </div>
 <script>
 
+    // Get CSRF token function
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
     // Add JavaScript to handle form submission and branch loading
     document.getElementById('verify_form').addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const formData = {
             otp: e.target.otp.value,
-            phone_number: phone_number,
-            otp: otp,
+            serial_no: "{{ serial_no|escapejs }}",
+            phone_number: "{{ phone_number|escapejs }}",
 
         };
 
@@ -43,12 +69,13 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
                 },
                 body: JSON.stringify(formData)
             });
 
             if (response.ok) {
-                window.location.href = '/dashboard/';
+                window.location.href = "{% url 'users-home' %}";
             } else {
                 const errorData = await response.json();
                 alert(`Error: ${errorData.detail || 'Unknown error'}`);

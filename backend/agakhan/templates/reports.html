@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block head %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+<style>
+    .report-card {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin: 2rem auto;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        position: relative;
+    }
+
+    .patient-sidebar {
+        border-left: 1px solid #dee2e6;
+        padding-left: 1.5rem;
+    }
+
+    .data-freshness {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+
+    [data-bs-toggle="tooltip"] {
+        border-bottom: 1px dashed #666;
+        cursor: help;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav class="nav nav-pills justify-content-between mb-4" aria-label="Main navigation">
+        <!-- Navigation items same as before -->
+    </nav>
+
+    <div class="data-freshness" aria-label="Data freshness">
+        <i class="bi bi-clock-history"></i> Updated: {% now "DATETIME_FORMAT" %}
+    </div>
+
+    <div class="report-card">
+        <div class="row">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <!-- Visualizations -->
+                <div class="mb-5" role="region" aria-labelledby="riskTrendsHeading">
+                    <h4 id="riskTrendsHeading" class="mb-3">Risk Trends Over Time</h4>
+                    <canvas id="trendChart" 
+                            aria-label="Line chart showing risk trend over past 6 months"
+                            role="img"></canvas>
+                </div>
+
+                <!-- Comparative Data -->
+                <section aria-labelledby="comparativeDataHeading">
+                    <h4 id="comparativeDataHeading" class="mb-3">Comparative Analysis</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <canvas id="populationComparison" 
+                                    aria-label="Bar chart comparing patient metrics to population averages"
+                                    role="img"></canvas>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info" role="alert">
+                                <i class="bi bi-info-circle"></i>
+                                <span data-bs-toggle="tooltip" 
+                                      data-bs-placement="top"
+                                      title="Compared to similar demographic group">
+                                    Population Percentile: 85th
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Patient Sidebar -->
+            <div class="col-lg-4 patient-sidebar">
+                <div class="sticky-top">
+                    <h5 class="mb-3">Patient Summary</h5>
+                    <dl class="row">
+                        <dt class="col-sm-5">Last ECG</dt>
+                        <dd class="col-sm-7">2024-03-15</dd>
+                        
+                        <dt class="col-sm-5" data-bs-toggle="tooltip" 
+                            title="Low-density Lipoprotein Cholesterol">
+                            LDL Level
+                        </dt>
+                        <dd class="col-sm-7">189 mg/dL</dd>
+                    </dl>
+
+                    <div class="mt-4">
+                        <h6>Historical Comparisons</h6>
+                        <canvas id="miniTrend" 
+                                aria-label="Mini trend chart of key metrics"
+                                role="img"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PDF Generation -->
+        <button class="btn btn-primary download-btn"
+                aria-label="Download PDF report"
+                onclick="generatePDF()">
+            <i class="bi bi-file-earmark-arrow-down"></i> Download PDF
+        </button>
+    </div>
+</div>
+
+<script>
+    // Initialize Charts
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {/* ... */},
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    mode: 'nearest',
+                    intersect: false
+                }
+            }
+        }
+    });
+
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(t => new bootstrap.Tooltip(t));
+
+    // PDF Generation Handler
+    function generatePDF() {
+        // Implement PDF service integration
+        window.print(); // Temporary fallback
+    }
+</script>
+{% endblock %}

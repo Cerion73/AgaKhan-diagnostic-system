@@ -6,36 +6,88 @@
     <h2 class="text-center mb-4">Welcome</h2>
     <p class="text-center">To proceed with the diagnostic process, sign in to your account below:</p>
     
-    <div class="form-group">
-        <label>Name</label>
-        <input type="text" class="form-control" id="id_username" required>
-    </div>
+    <form id="signinForm">
+        {% csrf_token %}
 
-    <div class="form-group">
-        <label>Phone</label>
-        <input type="tel" class="form-control" pattern="+254[0-9]{9}">
-    </div>
+        <div class="mb-3">
+            <label class="form-label">Staff ID</label>
+            <input type="text" class="form-control" name="serial_no" required>
+        </div>
 
-    <div class="form-group">
-        <label>Password</label>
-        <input type="password" class="form-control" id="id_password" required>
-    </div>
+        <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control" name="password" required>
+        </div>
 
-    <div class="form-group">
-        <label>Branch</label>
-        <select class="form-select" id="branchSelect">
-            <option>Select...</option>
-            <!-- Populated via API -->
-        </select>
-    </div>
+        <div class="mb-3">
+            <label class="form-label">Branch</label>
+            <select class="form-select" name="branch" required>
+                <option value="">Select...</option>
+                {% for branch in branches %}
+                <option value="{{ branch.id }}">{{ branch.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-    <button class="btn btn-primary w-100" onclick="handleLogin()">Submit</button>
-
+        <button type="submit" class="btn btn-primary w-100">Submit</button>
+    </form>
     <p class="text-center mt-3">
-        Don't have an account? <a href="/signup/">Sign up</a>
+        Don't have an account? <a href="{% url 'users-signup' %}">Sign up</a>
     </p>
 </div>
 
+<script>
+    // Add JavaScript to handle form submission and branch loading
+
+    // Get CSRF token function
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    document.getElementById('signinForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            serial_no: e.target.serial_no.value,
+            password: e.target.password.value,
+            branch: parseInt(e.target.branch.value),
+        };
+        console.log(formData)
+
+        try {
+            const response = await fetch('http://localhost:8000/users/signin.html/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify(formData),
+            });
+
+            console.log(response)
+            if (response.ok) {
+                window.location.href = "{% url 'users-home' %}";
+            } else {
+                const errorData = await response.json();
+                alert(`Error: ${errorData.detail || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred during registration');
+        }
+    });
+</script>
 <!-- <script>
     // Populate branches
     fetch('/api/branches/')

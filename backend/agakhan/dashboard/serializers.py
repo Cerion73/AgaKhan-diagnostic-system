@@ -81,3 +81,18 @@ class PatientSerializer(serializers.ModelSerializer):
         model = Patient
         fields = '__all__'
 
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = '__all__'
+
+class PredictionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Prediction
+        fields = '__all__'
+        
+
+class ECGSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ECG
+        fields = '__all__'

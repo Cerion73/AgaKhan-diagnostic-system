@@ -5,7 +5,7 @@
 {% block content %}
 <div class="aga-card">
     <h2 style="color: var(--primary-color); margin-bottom: 1.5rem;">Request OTP</h2>
-    <form method="post">
+    <form id="req_form" method="post">
         {% csrf_token %}
         <input type="tel" name="phone" class="form-control" 
                placeholder="Enter registered phone number" required>
@@ -17,4 +17,52 @@
         
     </div>
 </div>
+
+<script>
+
+    // Get CSRF token function
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    // Add JavaScript to handle form submission and branch loading
+    document.getElementById('req_form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            phone_number: e.target.phone.value,
+        };
+
+        try {
+            const response = await fetch('http://127.0.0.1:8000/users/otp_request/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                window.location.href = '/users-otp_verify/';
+            } else {
+                const errorData = await response.json();
+                alert(`Error: ${errorData.detail || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred during registration');
+        }
+    });
+</script>
 {% endblock %}

@@ -9,7 +9,7 @@
         padding: 2rem;
         margin-bottom: 2rem;
         box-shadow: 0 2px 15px rgba(0,0,0,0.1);
-        transition: transform 0.3s ease;
+        transition: transform 0.7s ease;
     }
     
     .dashboard-card:hover {
@@ -44,80 +44,76 @@
         border-radius: 25px;
         font-weight: 500;
     }
+    #cards_mat{
+        margin-bottom: 40px;
+    }
+    body{
+        margin: 0 auto;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <!-- Register Patient Card -->
-    <div class="dashboard-card">
-        <h2 class="section-title">Register Patient</h2>
-        <p class="text-muted mb-4">Register a patient to get them ready for examination.</p>
-        
-        <div class="row">
-            <div class="col-md-6">
-                <div class="action-item">
-                    <div>
-                        <h5>Add Record</h5>
-                        <p class="text-muted mb-0">Create new patient record</p>
-                    </div>
-                    <a href="{% url 'register_patient' %}" class="btn btn-primary btn-custom">
-                        <i class="bi bi-person-plus"></i> Add
-                    </a>
-                </div>
-            </div>
-            
-            <div class="col-md-6">
-                <div class="action-item">
-                    <div>
-                        <h5>Add Clinical Results</h5>
-                        <p class="text-muted mb-0">Record clinical findings</p>
-                    </div>
-                    <a href="{% url 'add_clinical' %}" class="btn btn-success btn-custom">
-                        <i class="bi bi-clipboard2-plus"></i> Add
-                    </a>
-                </div>
-            </div>
-        </div>
+<div class="min-h-screen bg-gray-50 px-4 py-10 flex justify-center items-center" style="display: inline-flex; flex-direction: row; align-self: center; justify-content: center; align-items: center; margin-right: 0;">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-7xl">
+      
+    <div style="display: flex; margin: 0 auto;">
+      <!-- Card 1: Register Patient -->
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center"  style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left; position: relative;" >
+        <img src="{% static 'assets/patient.avif' %}" alt="Register Patient" class="w-full h-40 object-contain mb-4" style="height: 190px; width: 60%;"/>
+        <h3 class="text-lg font-semibold">Register Patient</h3>
+        <p class="text-sm text-gray-600 mb-4">Register a patient to get them ready for examination.</p>
+        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Register</button>
+      </div>
+  
+      <!-- Card 2: Record Patient's Demographics -->
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left;">
+        <img src="{% static 'assets/exam.avif' %}" alt="Record Demographics" class="w-full h-40 object-contain mb-4"  style="height: 190px; width: 60%;"/>
+        <h3 class="text-lg font-semibold">Record patient's demographics</h3>
+        <p class="text-sm text-gray-600 mb-4">Fill patient's examination details.</p>
+        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;" >Add Record</button>
+      </div>
     </div>
 
-    <!-- Medical Imaging Card -->
-    <div class="dashboard-card">
-        <h2 class="section-title">Add Medical Imaging Scans</h2>
-        <p class="text-muted mb-4">Fill out scan results and report.</p>
-        
-        <div class="row">
-            <div class="col-md-6">
-                <div class="action-item">
-                    <div>
-                        <h5>Add Laboratory Test Results</h5>
-                        <p class="text-muted mb-0">Record patient's lab test results</p>
-                    </div>
-                    <a href="{% url 'add_lab' %}" class="btn btn-info btn-custom">
-                        <i class="bi bi-file-earmark-medical"></i> Add
-                    </a>
-                </div>
-            </div>
-        </div>
+    <div style="display: flex; margin: 0 auto;">
+      <!-- Card 3: Record Clinical Results -->
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left;">
+        <img src="{% static 'assets/clinical.avif' %}" alt="Clinical Results" class="w-full h-40 object-contain mb-4" style="height: 190px; width: 60%;"/>
+        <h3 class="text-lg font-semibold">Record Clinical Results</h3>
+        <p class="text-sm text-gray-600 mb-4">Record patient's clinical assessment results.</p>
+        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Add Clinical Results</button>
+      </div>
+    
+  
+      <!-- Card 4: Add Medical Imaging Scans -->
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left;">
+        <img src="{% static 'assets/scans.avif' %}" alt="Medical Imaging Scans" class="w-full h-40 object-contain mb-4" style="height: 190px; width: 60%;"/>
+        <h3 class="text-lg font-semibold">Add Medical Imaging Scans</h3>
+        <p class="text-sm text-gray-600 mb-4">Fill out scan results and report.</p>
+        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Add Scans</button>
+      </div>
     </div>
+  
 
-    <!-- Clinical Results Card -->
-    <div class="dashboard-card">
-        <h2 class="section-title">Record Clinical Results</h2>
-        <div class="text-center">
-            <a href="{% url 'clinical_results' %}" class="btn btn-warning btn-lg">
-                <i class="bi bi-clipboard2-pulse"></i> Start Recording
-            </a>
-        </div>
+    <div style="display: flex; margin: 0 auto;">
+      <!-- Card 5: Add Laboratory Test Results -->
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left;">
+        <img src="{% static 'assets/lab tests.avif' %}" alt="Lab Results" class="w-full h-40 object-contain mb-4" style="height: 190px; width: 60%;"/>
+        <h3 class="text-lg font-semibold">Add Laboratory Test Results</h3>
+        <p class="text-sm text-gray-600 mb-4">Record patient's lab test results.</p>
+        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Add Lab Results</button>
+      </div>
+  
+      <!-- Card 6: Register Staff -->
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left; align-items: center; justify-content: center;">
+        <img src="{% static 'assets/doctor.avif' %}" alt="Register Staff" class="w-full h-40 object-contain mb-4" style="height: 190px; width: 60%;"/>
+        <h3 class="text-lg font-semibold">Register Staff</h3>
+        <p class="text-sm text-gray-600 mb-4">Register new staff to the system.</p>
+        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;" >Register</button>
+      </div>
     </div>
-
-    <!-- Staff Registration Card -->
-    <div class="dashboard-card">
-        <h2 class="section-title">Register Staff</h2>
-        <p class="text-muted mb-4">Register new staff to the system.</p>
-        <a href="{% url 'signup' %}" class="btn btn-danger btn-custom">
-            <i class="bi bi-person-badge"></i> Register Now
-        </a>
+  
     </div>
-</div>
+  </div>
+  
 {% endblock %}

@@ -1,6 +1,6 @@
 from django.urls import path, include
 import rest_framework.urls
-from dashboard.views import PractitionerViewset, RegisterPatientViewSet, BrachViewSet, ExaminationViewSet, ClinicalResultViewSet, LabResultsViewSet, MedicalScanViewSet
+from dashboard.views import PractitionerViewset, RegisterPatientViewSet, BrachViewSet, ExaminationViewSet, ClinicalResultViewSet, LabResultsViewSet, MedicalScanViewSet, 
 from rest_framework.routers import DefaultRouter
 import rest_framework
 
@@ -11,6 +11,8 @@ router.register(r'branch', BrachViewSet, basename='branch')
 router.register(r'med-exam', ExaminationViewSet, basename='med-exam')
 router.register(r'clinical', ClinicalResultViewSet, basename='clinical')
 router.register(r'lab', LabResultsViewSet, basename='lab')
+router.register(r'imaging', MedicalScanViewSet, basename='imaging')
+router.register(r'ecg', MedicalScanViewSet, basename='ecg')
 router.register(r'imaging', MedicalScanViewSet, basename='imaging')
 
 urlpatterns = [
