@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow p-8">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6">Upload ECG Scan</h2>
+
+        <!-- Message Area -->
+        <div id="message" class="mb-4 text-sm font-medium text-green-600 hidden"></div>
+
+        <form id="ecgForm" class="space-y-6">
+            <!-- Scan Type -->
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Scan Type</label>
+                <select id="scan_type" name="scan_type" class="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="ECG Reading Images">ECG Reading Images</option>
+                    <option value="Other Type">Other Type</option>
+                </select>
+            </div>
+
+            <!-- Scan hea -->
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Scan hea</label>
+                <input type="file" id="scan_header" name="scan_header"
+                       class="w-full px-3 py-2 border rounded-xl file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:bg-gray-100 file:text-gray-700" />
+            </div>
+
+            <!-- Scan dat -->
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Scan dat</label>
+                <input type="file" id="scan_data" name="scan_data"
+                       class="w-full px-3 py-2 border rounded-xl file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:bg-gray-100 file:text-gray-700" />
+            </div>
+
+            <!-- Patient -->
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Patient</label>
+                <select id="patient" name="patient" class="w-full border rounded-xl px-4 py-2">
+                    <option value="">Select a patient</option>
+                    <!-- Dynamically filled -->
+                </select>
+            </div>
+
+            <!-- Created By -->
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Created By</label>
+                <select id="created_by" name="created_by" class="w-full border rounded-xl px-4 py-2">
+                    <option value="">Select creator</option>
+                    <!-- Dynamically filled -->
+                </select>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="pt-4 flex justify-between">
+                <button type="button" onclick="submitECG()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-xl shadow">
+                    Proceed
+                </button>
+                <a href="{% url 'users-home' %}"
+                   class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium px-6 py-3 rounded-xl shadow">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    async function submitECG() {
+        const formData = new FormData();
+        formData.append("scan_type", document.getElementById("scan_type").value);
+        formData.append("scan_header", document.getElementById("scan_header").files[0]);
+        formData.append("scan_data", document.getElementById("scan_data").files[0]);
+        formData.append("patient", document.getElementById("patient").value);
+        formData.append("created_by", document.getElementById("created_by").value);
+
+        try {
+            const response = await fetch("{% url 'ecg-ecg' %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+
+            const msgBox = document.getElementById("message");
+            if (response.ok) {
+                msgBox.textContent = result.message || "ECG uploaded successfully!";
+                msgBox.classList.remove("hidden");
+                msgBox.classList.add("text-green-600");
+            } else {
+                msgBox.textContent = result.error || "An error occurred.";
+                msgBox.classList.remove("hidden");
+                msgBox.classList.add("text-red-600");
+            }
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    }
+
+    // (Optional) Populate dropdowns via API
+    document.addEventListener("DOMContentLoaded", async () => {
+        const patientSelect = document.getElementById("patient");
+        const createdBySelect = document.getElementById("created_by");
+
+        try {
+            const [patientsRes, staffRes] = await Promise.all([
+                fetch("{% url 'patient-list' %}"),
+                fetch("{% url 'users-list' %}")
+            ]);
+
+            const patients = await patientsRes.json();
+            const staff = await staffRes.json();
+
+            patients.forEach(p => {
+                const option = document.createElement("option");
+                option.value = p.id;
+                option.textContent = p.name;
+                patientSelect.appendChild(option);
+            });
+
+            staff.forEach(s => {
+                const option = document.createElement("option");
+                option.value = s.id;
+                option.textContent = s.name;
+                createdBySelect.appendChild(option);
+            });
+
+        } catch (error) {
+            console.error("Failed to load dropdowns:", error);
+        }
+    });
+</script>
+{% endblock %}

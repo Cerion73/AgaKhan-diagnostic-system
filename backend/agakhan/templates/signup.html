@@ -9,7 +9,7 @@
             <h2 class="welcome-text text-center">Welcome</h2>
             <p class="instruction-text text-center">To proceed with the diagnostic process, sign up to your account below:</p>
             
-            
+            <!-- {{ user }} -->
             <form id="signupForm">
                 {% csrf_token %}
                 <div class="mb-3">
@@ -56,12 +56,10 @@
 
                 <div class="mb-3" style="margin-bottom: 40px;"></div>
                     <label class="form-label">Gender</label>
-                    <select class="form-select" name="gender" required  style="margin-bottom: 32px;">
-                        <option value="">Select...</option>
+                    <select class="form-select" name="sex" required  style="margin-bottom: 32px;">
+                        <option value="" disabled>Select...</option>
                         <option value="F">Female</option>
                         <option value="M">Male</option>
-                        <option value="I">Intersex</option>
-                        <option value="O">Other</option>
                     </select>
                 </div>
 
@@ -104,12 +102,12 @@
                 password: e.target.password.value,
                 confirm_password: e.target.confirm_password.value,
                 branch: parseInt(e.target.branch.value),
-                gender: e.target.gender.value
+                gender: e.target.sex.value
             };
             console.log(formData)
 
             try {
-                const response = await fetch('http://localhost:8000/users/signup.html/', {
+                const response = await fetch("{% url 'users-signup' %}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

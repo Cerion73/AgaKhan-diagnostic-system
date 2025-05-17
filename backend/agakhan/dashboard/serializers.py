@@ -50,6 +50,18 @@ class PractitionerSerializer(serializers.ModelSerializer):
         model = Practitioner
         fields = '__all__'
 
+class OTPVerifySerializer(serializers.Serializer):
+    user = serializers.CharField()
+    otp = serializers.CharField()
+
+    def validate(self, data):
+        try:
+            user = CustomUser.objects.get(serial_no=data['user'])
+            data['user'] = user
+            return data
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError("User with that serial number does not exist.")
+
 class BranchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
@@ -95,4 +107,9 @@ class PredictionSerializer(serializers.ModelSerializer):
 class ECGSerializer(serializers.ModelSerializer):
     class Meta:
         model = ECG
+        fields = '__all__'
+
+class PredTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PredType
         fields = '__all__'

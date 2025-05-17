@@ -6,19 +6,18 @@
 {% block content %}
 <div class="aga-card">
     <h2 style="color: var(--primary-color); margin-bottom: 1.5rem;">OTP Verification</h2>
-    <form id="verify_form" method="post">
+    
+    <form id="verify_form" method="post" action="{% url 'users-otp_verify' %}">
+
+        {% csrf_token %}
         <!-- Hidden inputs for server values -->
-        <input type="hidden" name="serial_no" value="{{ serial_no }}">
-        <input type="hidden" name="phone_number" value="{{ phone_number }}">
+        <input type="hidden" name="serial_no" value="{{ user.serial_no }}">
+        <input type="hidden" name="phone_number" value="{{ user.phone }}">
+
+        <i style="color: #dc3545; font-weight: 900;">{{ error }}</i>
 
         <!-- Input for users -->
-         {{ otp_data }}
-         {{ serial_no }}
-         {{ phone_number }}
-         {{ practitioner_user.user.serial_no }}
-        <p>Serial No: {{ serial_no }}</p>
-        <p>Phone Number: {{ phone_number }}</p>
-        <label for="otp">Your {{serial_no}} One Time Password (OTP) has be sent on {{phone_number}}</label>
+        <label for="otp">Your {{user.serial_no}} One Time Password (OTP) has be sent on {{user.phone}}</label>
         {% csrf_token %}
         <input type="text" name="otp" class="form-control" 
                placeholder="Enter 6-digit OTP" pattern="\d{6}" required>
@@ -27,7 +26,7 @@
         <div style="color: #dc3545; margin-bottom: 1rem;">{{ error }}</div>
         {% endif %}
         
-        <button type="submit" class="btn-primary">Verify OTP</button>
+        <button type="submit" class="btn btn-primary w-46">Verify OTP</button>
     </form>
     
     <div style="margin-top: 1rem; text-align: center;">
@@ -58,14 +57,14 @@
         e.preventDefault();
         
         const formData = {
+            user: "{{ user.serial_no|escapejs }}",
             otp: e.target.otp.value,
-            serial_no: "{{ serial_no|escapejs }}",
-            phone_number: "{{ phone_number|escapejs }}",
-
+            verified: true,
+            created_at: "{{ user.last_login|escapejs}}",
         };
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/users/otp_verify/', {
+            const response = await fetch("{% url 'users-otp_verify' %}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

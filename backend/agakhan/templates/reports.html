@@ -81,6 +81,9 @@
                 </section>
             </div>
 
+            {{ pred.predicted_name }}
+            {{ pred.classes_probabilities }}
+
             <!-- Patient Sidebar -->
             <div class="col-lg-4 patient-sidebar">
                 <div class="sticky-top">
@@ -142,5 +145,6 @@
         // Implement PDF service integration
         window.print(); // Temporary fallback
     }
+    
 </script>
 {% endblock %}

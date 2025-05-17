@@ -8,12 +8,12 @@ from rest_framework import status
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAuthenticated
 from dashboard.models import Patient, Practitioner, MedicalScan, ClinicalResult, Branch, CustomUser, Examination, LabResults, Prediction, Report, SCAN_TYPE, ECG
-from dashboard.serializers import PractitionerSerializer, PatientSerializer, BranchSerializer,ClinicalResultSerializer, MedicalScanSerializer, UserSerializer, LabResultsSerializer, ExaminationSerializer, PredictionSerializer, ReportSerializer, ECGSerializer
+from dashboard.serializers import PractitionerSerializer, PatientSerializer, BranchSerializer,ClinicalResultSerializer, MedicalScanSerializer, UserSerializer, LabResultsSerializer, ExaminationSerializer, PredictionSerializer, ReportSerializer, ECGSerializer, PredTypeSerializer, OTPVerifySerializer
 from django.shortcuts import get_object_or_404
 from random import randint
 from django.utils import timezone
 import requests
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, authenticate
 from django.urls import reverse
 from django.shortcuts import redirect
 import uuid
@@ -22,84 +22,86 @@ from agakhan.settings import TIARA_CONNECT_API_KEY
 import secrets
 from django.db import transaction
 from django.db.utils import IntegrityError
+from django.template import loader
 import numpy as np
 import wfdb
 import tensorflow as tf
 import joblib
 import PIL
-import cv2
+import cv2, os
 import pandas as pd
+from django.conf import settings
+from urllib.parse import urlparse
 # from django.contrib.auth import authenticate
 # Create your views here.
 
 class PractitionerViewset(ModelViewSet):
     queryset = Practitioner.objects.all()
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     serializer_class = PractitionerSerializer
 
-    @action(methods=['get', 'post'], detail=False, url_name='signin', url_path='signin.html', renderer_classes = [TemplateHTMLRenderer])
+    @action(methods=['get', 'post'], detail=False, url_name='signin', url_path='signin.html', renderer_classes = [TemplateHTMLRenderer], permission_classes=[AllowAny])
     def signin(self, request):
         branches = Branch.objects.all()
 
         if request.method == 'POST':
             serializer = PractitionerSerializer(data=request.data)
-            print(request.data)
+            print(request)
 
             if serializer.is_valid():
                 password = serializer.validated_data['password']
                 serial_no = serializer.validated_data['serial_no']
                 branch = serializer.validated_data['branch']
                 
-                user = get_object_or_404(CustomUser, serial_no=serial_no, password=password, branch=branch)
-                # user = Practitioner.objects.get(serial_no=serial_no, password=password)
-                # phone_number = user.phone
-                print(user)
+                print(serial_no)
+                user = authenticate(request, serial_no=serial_no, password=password)
+                print(user.last_name)
+
+                print(serial_no)
+                login(request, user)
+                phone_number = user.phone
+
                 try:
-                    login(request, user)
-                    return Response({'message': 'OTP sent successfully.'}, template_name='home.html')
+                    with transaction.atomic():
+                        otp = str(secrets.randbelow(900000) + 100000)
+                        user.otp = otp
+                        user.created_at = timezone.now()
+                        user.is_verified = False
+                        user.save()
+
+                        ref_id = str(uuid.uuid4())
+
+                        payload = {
+                            "from": "TIARACONECT",
+                            "to": phone_number,
+                            "message": f"Your OTP is {otp}",
+                            "refId": ref_id,
+                            "messageType": "1",
+                        }
+                        headers = {
+                            'Authorization': f'Bearer {TIARA_CONNECT_API_KEY}',
+                            'Content-Type': 'application/json',
+                        }
+                        print(serial_no)
+
+                        response = requests.post(
+                            'https://api2.tiaraconnect.io/api/messaging/sendsms',
+                            json=payload,
+                            headers=headers
+                        )
+
+                        if response.status_code == 200:
+                            return Response({'message': 'OTP sent successfully.'}, template_name='otp_verify.html')
+
+                        else:
+                            return Response({'error': 'Failed to send OTP. Please try again.'},
+                                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                        template_name='otp_request.html')
+
                 except Exception as e:
-                    return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='signin.html')
-
-            #     try:
-            #         with transaction.atomic():
-            #             otp = str(secrets.randbelow(900000) + 100000)
-            #             user.otp = otp
-            #             user.created_at = timezone.now()
-            #             user.is_verified = False
-            #             user.save()
-
-            #             ref_id = str(uuid.uuid4())
-
-            #             payload = {
-            #                 "from": "TIARACONECT",
-            #                 "to": phone_number,
-            #                 "message": f"Your OTP is {otp}",
-            #                 "refId": ref_id,
-            #                 "messageType": "1",
-            #             }
-            #             headers = {
-            #                 'Authorization': f'Bearer {TIARA_CONNECT_API_KEY}',
-            #                 'Content-Type': 'application/json',
-            #             }
-
-            #             response = requests.post(
-            #                 'https://api2.tiaraconnect.io/api/messaging/sendsms',
-            #                 json=payload,
-            #                 headers=headers
-            #             )
-
-            #             if response.status_code == 200:
-            #                 return Response({'message': 'OTP sent successfully.'}, template_name='otp_verify.html')
-
-            #             else:
-            #                 return Response({'error': 'Failed to send OTP. Please try again.'},
-            #                             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            #                             template_name='otp_request.html')
-
-            #     except Exception as e:
-            #         # Optional logging here
-            #         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='signup.html')
-            # return Response({'error': 'Check your credentials!'}, template_name='signin.html',status=status.HTTP_200_OK)
+                    # Optional logging here
+                    return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='signup.html')
+            return Response({'error': 'Check your credentials!'}, template_name='signin.html',status=status.HTTP_200_OK)
         return Response({'branches': branches}, status=status.HTTP_200_OK, template_name='signin.html')
         
     @action(methods=['get', 'post'], detail=False, url_name='otp_request', url_path='otp_request.html', renderer_classes = [TemplateHTMLRenderer])
@@ -135,6 +137,8 @@ class PractitionerViewset(ModelViewSet):
                             headers=headers
                         )
 
+
+
                         if response.status_code == 200:
                             return Response({'message': 'OTP sent successfully.'}, template_name='otp_verify.html', status=status.HTTP_403_FORBIDDEN)
 
@@ -148,44 +152,47 @@ class PractitionerViewset(ModelViewSet):
 
     @action(methods=['get', 'post'], detail=False, url_name='otp_verify', url_path='otp_verify.html', renderer_classes = [TemplateHTMLRenderer])
     def otp_verify(self, request):
-        conte = request.session.get('user_data')
-        print(conte)
-        print(request.user)
-        print(request.headers)
         if request.method == 'GET':
-            context = {}
-            if request.user.is_authenticated: # added check
-                context['serial_no'] = request.session.get('serial_no') # added
-                context['phone_number'] =request.session.get('phone_number') # added
-            else:
-                return redirect('users-signin') # added
-            return Response(context, status=status.HTTP_200_OK, template_name='otp_verify.html')
+            return Response(status=status.HTTP_200_OK, template_name='otp_verify.html')
 
         print(request.data)
         if request.method == 'POST':
-            serializer = PractitionerSerializer(data=request.data)
+            serializer = OTPVerifySerializer(data=request.data)
 
             if not serializer.is_valid():
+                print(serializer.error_messages)
+                print(serializer._errors)
+                print(serializer.errors)
                 return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST, template_name='otp_verify.html')
             
             otp = serializer.validated_data['otp']
-            serial_no = serializer.validated_data['serial_no']
-            phone_number = serializer.validated_data['phone']
+            user = serializer.validated_data['user']
+            print(user.serial_no)
             try:
-                user = get_object_or_404(CustomUser, serial_no=serial_no, phone=phone_number)
                 pract_user = get_object_or_404(Practitioner, user=user, otp=otp)
-                if timezone.now() - user.created_at > timezone.timedelta(minutes=15):
-                    return Response({'error': 'OTP has expired.'}, status=status.HTTP_400_BAD_REQUEST, template_name='otp_verify.html')
+                print(pract_user)
+                if timezone.now() - pract_user.created_at > timezone.timedelta(minutes=15):
+                    return Response({'error': 'OTP has expired.'}, status=status.HTTP_403_FORBIDDEN, template_name='otp_verify.html')
 
                 
                 # Verify user and clear OTP
+                print(pract_user)
                 pract_user.verified = True
-                pract_user.otp = None
+                pract_user.otp = 0
+                pract_user.created_at = timezone.now()
                 pract_user.save()
-                return Response({'message': 'OTP verified successfully.', **pract_user}, status=status.HTTP_200_OK, template_name='home.html')
+                print(pract_user)
+                serial_no = user.serial_no
+                print(serial_no)
+                user = get_object_or_404(CustomUser, serial_no=serial_no)
+                print(user)
+                login(request, user)
+                return Response({'message': 'OTP verified successfully.', 'user': user}, status=status.HTTP_200_OK, template_name='home.html')
 
             except CustomUser.DoesNotExist:
-                return Response({'error': 'Invalid OTP or phone number.'}, status=status.HTTP_400_BAD_REQUEST, template_name='otp_verify.html')
+                return Response({'error': 'Invalid OTP or phone number.'}, status=status.HTTP_204_NO_CONTENT, template_name='otp_verify.html')
+            except Exception as e:
+                return Response({'error': e}, status=status.HTTP_404_NOT_FOUND, template_name='otp_verify.html')
 
     @action(methods=['get', 'post'], detail=False, url_name='signup', url_path='signup.html', permission_classes=[AllowAny], renderer_classes = [TemplateHTMLRenderer])
     def signup(self, request):
@@ -193,7 +200,7 @@ class PractitionerViewset(ModelViewSet):
         branches = Branch.objects.all().order_by('name')  # Get all branches
         gender = GENDER_CHOICES[:]
         context = {'branches': branches, 'gender': gender}
-        print(request.data)
+        # print(request.data)
 
         if request.method == 'POST':
             serializer = UserSerializer(data=request.data)
@@ -207,16 +214,18 @@ class PractitionerViewset(ModelViewSet):
             try:
                 with transaction.atomic():
                     user = serializer.save()
-                    # logout(request, user)
-                    login(request, user)
+                    # logout(request.user)
                     practitioner_user = Practitioner.objects.create(user=user, otp = str(secrets.randbelow(900000) + 100000), created_at=timezone.now())
-                    practitioner_user.save()
+                    # practitioner_user.save()
+                    # logout(request.user)
+                    login(request, user)
 
                     context['serial_no'] = practitioner_user.user.serial_no
                     context['phone_number'] = practitioner_user.user.phone
+                    context['user'] = practitioner_user
                     request.user = user
                     # request.session['otp_data'] = context
-                    request.session['user_data'] = user.serial_no
+                    # request.session['from_user'] = user.serial_no
                     ref_id = str(uuid.uuid4())
                     print(practitioner_user)
 
@@ -241,9 +250,12 @@ class PractitionerViewset(ModelViewSet):
                     print(type(code))
                     print(phone_number)
 
+                    
+
                     if code == 200:
-                        print(request.session.get('user_data'))
-                        return Response({'phone_number': phone_number, 'serial_no': serial_no}, template_name='otp_verify.html', status=status.HTTP_200_OK)
+                        print(request.session.get('from_user'))
+                        print(phone_number, serial_no)
+                        return Response(context, template_name='otp_verify.html', status=status.HTTP_200_OK)
                     else:
                         return Response({'error': 'Failed to send OTP. Please try again.', **context}, template_name='otp_request.html', status=status.HTTP_403_FORBIDDEN)
 
@@ -267,7 +279,7 @@ class RegisterPatientViewSet(ModelViewSet):
         # branch = request.user.branch
         print(branch)
         if request.method == 'POST':
-            serializer = PatientSerializer(request.data)
+            serializer = PatientSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='register_patient.html')
             
@@ -284,7 +296,7 @@ class ExaminationViewSet(ModelViewSet):
     @action(methods=['get', 'post'], detail=False, url_name='examination', url_path='examination.html', renderer_classes = [TemplateHTMLRenderer])
     def examination(self, request):
         if request.method == 'POST':
-            serializer = ExaminationSerializer(request.data)
+            serializer = ExaminationSerializer(data=request.data)
 
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='examination.html')
@@ -307,7 +319,7 @@ class ClinicalResultViewSet(ModelViewSet):
     @action(methods=['get', 'post'], detail=False, url_name='clinical_assessment', url_path='clinical_assessment.html', renderer_classes = [TemplateHTMLRenderer])
     def clinical_assessment(self, request):
         if request.method == 'POST':
-            serializer = ClinicalResultSerializer(request.data)
+            serializer = ClinicalResultSerializer(data=request.data)
 
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='clinical_assessment.html')
@@ -330,7 +342,7 @@ class LabResultsViewSet(ModelViewSet):
     @action(methods=['get', 'post'], detail=False, url_name='lab_results', url_path='lab_results.html', renderer_classes = [TemplateHTMLRenderer])
     def lab_results(self, request):
         if request.method == 'POST':
-            serializer = ClinicalResultSerializer(request.data)
+            serializer = ClinicalResultSerializer(data=request.data)
 
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='lab_results.html')
@@ -346,21 +358,34 @@ class LabResultsViewSet(ModelViewSet):
 
     @action(methods=['get', 'post'], detail=False, url_name='predict', url_path='predict.html', renderer_classes = [TemplateHTMLRenderer])
     def predict(self, request):
+        # load the model and preprocessor
+        model_path = os.path.join(settings.BASE_DIR, 'models', 'best_model.h5')
+        norm_model = tf.keras.models.load_model(model_path)
+        preprocessor = joblib.load('models/heart_preprocessor.pkl')
         if request.method == 'POST':
-            serializer = ClinicalResultSerializer(request.data)
+            serializer = PredTypeSerializer(data=request.data)
 
             if not serializer.is_valid():
+                print(serializer.error_messages)
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='predict.html')
             patient = serializer.save()
-
+            print(patient)
             serial_no = serializer.validated_data['serial_no']
+            print(serial_no.serial_no)
+            serial_no = serial_no.serial_no
             user = get_object_or_404(Patient, serial_no=serial_no)
-            lab = get_object_or_404(LabResults, patient=serial_no).order_by('-created_at').first()
-            clinic = get_object_or_404(ClinicalResult, patient=serial_no).order_by('-created_at').first()
-            exam = get_object_or_404(Examination, patient=serial_no).order_by('-created_at').first()
-            dob = user.dob.date()  # Convert to `date` object if it's a datetime
-            clinic_date = clinic.date.date()  # Same here
+            print(user)
+            lab = get_object_or_404(LabResults, patient=serial_no)
+            print(lab)
+            clinic = get_object_or_404(ClinicalResult, patient=serial_no)
+            print(clinic)
+            exam = get_object_or_404(Examination, patient=serial_no)
+            print(exam)
+            dob = user.dob 
+            print(dob) # Convert to `date` object if it's a datetime
+            clinic_date = lab.date  # Same here
 
+            print(clinic_date)
             age = clinic_date.year - dob.year - ((clinic_date.month, clinic_date.day) < (dob.month, dob.day))
             gender = user.gender
             bp = exam.bp
@@ -370,7 +395,7 @@ class LabResultsViewSet(ModelViewSet):
             fam = exam.family_history
             diab = clinic.diabetes
             bmi = clinic.bmi
-            hpb = clinic.hpb
+            hpb = clinic.hbp
             low_hdl = lab.low_hdl
             high_ldl = lab.high_ldl
             alc = exam.alc_habits
@@ -390,9 +415,6 @@ class LabResultsViewSet(ModelViewSet):
                         'CRP Level', 'Homocysteine Level']
             data_df = pd.DataFrame([[age, gender, bp, chol, ex_habits, smoking, fam, diab, bmi, hpb, low_hdl, high_ldl, alc, stress,sleep, sugar, trig, fbs, crp, homo]], columns=columns)
 
-            # load the model and preprocessor
-            norm_model = tf.keras.models.load_model('best_model.h5')
-            preprocessor = joblib.load('models/heart_preprocessor.pkl')
             
             # preprocess the data and make predictions
             data_df = preprocessor.transform(data_df)
@@ -400,13 +422,14 @@ class LabResultsViewSet(ModelViewSet):
             pred_class = int(probability >= 0.5)
             # classes = ['No', 'Yes']
             class_name = 'No' if pred_class == 0 else 'Yes'
-            conf_score = round(probability if pred_class == 1 else 1 - probability, 4)
+            conf_score = np.round(probability if pred_class == 1 else 1 - probability, 4)
 
-            pred = Prediction.objects.create(patient=user, prediction_type='disease', confidence_score= conf_score, prediction_class = pred_class, prediction_name=class_name, class_probabilities=f'[{probability}, {1 - probability}]', risk_class=float(pred_class), disease_class=pred_class, date=timezone.now(), created_by=request.user)
+            pred = Prediction.objects.create(patient=user, prediction_type='disease', confidence_score= conf_score, predicted_class = pred_class, predicted_name=class_name, classes_probabilities=f'[{probability}, {1 - probability}]', risk_class=float(pred_class), disease_class=pred_class, date=timezone.now())
+            print(pred.predicted_name)
 
             return Response({'pred': pred}, template_name='reports.html', status=status.HTTP_201_CREATED)
         if request.method == 'GET':
-            patient = request.session.get('patient')
+            patient = Patient.objects.all()
             # patient = request.data
             print(patient) 
             return Response({'patient': patient}, template_name='predict.html', status=status.HTTP_200_OK)
@@ -420,7 +443,7 @@ class ECGViewSet(ModelViewSet):
     @action(methods=['get', 'post'], detail=False, url_name='ecg', url_path='ecg.html', renderer_classes = [TemplateHTMLRenderer])
     def ecg(self, request):
         if request.method == 'POST':
-            serializer = ClinicalResultSerializer(request.data)
+            serializer = ClinicalResultSerializer(data = request.data)
 
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='ecg.html')
@@ -435,35 +458,53 @@ class ECGViewSet(ModelViewSet):
         
     @action(methods=['get', 'post'], detail=False, url_name='predict', url_path='predict.html', renderer_classes = [TemplateHTMLRenderer])
     def predict(self, request):
-        ecg_model = tf.keras.models.load_model('models/cnn_ecg_deep.keras') #import the ecg model
+        model_path = os.path.join(settings.BASE_DIR, 'models', 'cnn_ecg_deep.keras')
+        ecg_model = tf.keras.models.load_model(model_path) #import the ecg model
         if request.method == 'POST':
-            serializer = ClinicalResultSerializer(request.data)
+            serializer = PredTypeSerializer(data= request.data)
 
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='predict.html')
             
             patient = serializer.save()
-            scan_done = serializer.validated_data['scan_type']
+            scan_done = serializer.validated_data['pred_type']
+            patient = serializer.validated_data['serial_no']
+            content_scan = get_object_or_404(ECG, patient=patient)
             if scan_done == 'ecg':
-                scan_content = serializer.validated_data['content_hea']
-                scan_dat = serializer.validated_data['content_data']
-                sig, attr = wfdb.rdsamp(f'data/scan/ecg/{scan_content}')
-                prediction_probablities = ecg_model.predict(np.expand_dims(sig, axis=0))
+                # Step 1: Extract the path from the URL
+                url = content_scan.scan_hea
+                print(url)
+
+                # Step 2: Get the filename (with extension)
+                filename_with_ext = os.path.basename(str(url))  # "00001_lr.hea"
+
+                # Step 3: Get the filename without extension (needed by wfdb)
+                file_id = os.path.splitext(filename_with_ext)[0]  # "00001_lr"
+
+                # Step 4: Construct local path (assuming you store data locally)
+                local_path = os.path.join('data/scans/ecg', file_id)
+                print(local_path)
+
+                print(local_path)
+                sig, attr = wfdb.rdsamp(local_path)
+                prediction_probablities = ecg_model.predict(np.expand_dims(sig, axis=0))[0]
                 prediction_class = np.argmax(prediction_probablities)
                 ecg_cols = ['HYP', 'NORM', 'CD', 'MI', 'STTC', 'NN']
-                index = prediction_probablities.get_index(prediction_class)
                 predicted_class = np.argmax(ecg_model.predict(np.expand_dims(sig, axis=0)))
                 print(f'The patient has disease belonging the class {ecg_cols[predicted_class]}')
+                np.set_printoptions(suppress=True) 
+                probs = np.round(prediction_probablities, 4) * 100
+                print(np.round(prediction_probablities, 4) * 100)
                 
-                conf_score = prediction_probablities[predicted_class] * 100
+                conf_score = round(prediction_probablities[predicted_class] * 100, 4)
                 class_name = ecg_cols[predicted_class]
                 risk_class = 0 if class_name == 'NORM' else 1
                 dis_diag = predicted_class
-                pred = Prediction.objects.create(patient=patient, confidence_score=conf_score, predicted_class=predicted_class, predicted_name=class_name, class_probabilities=prediction_probablities, risk_class=risk_class, disease_class=dis_diag)
+                pred = Prediction.objects.create(patient=patient, confidence_score=conf_score, predicted_class=predicted_class, predicted_name=class_name, classes_probabilities=probs.tolist(), risk_class=risk_class, disease_class=dis_diag)
 
             return Response({'pred': pred}, status=status.HTTP_201_CREATED, template_name='reports.html')      
         if request.method == 'GET':
-            patient = request.session.get('patient')
+            patient = Patient.objects.all()
             # patient = request.data
             print(patient)     
             return Response({'patient': patient}, status=status.HTTP_200_OK, template_name='predict.html')
@@ -477,7 +518,7 @@ class MedicalScanViewSet(ModelViewSet):
     @action(methods=['get','post'], detail=False, url_name='medical_scan', url_path='medical_scan.html', renderer_classes = [TemplateHTMLRenderer])
     def medical_scan(self, request):
         if request.method == 'POST':
-            serializer = MedicalScan(request.data)
+            serializer = MedicalScanSerializer(data=request.data)
 
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='medical_scan.html')
@@ -485,46 +526,61 @@ class MedicalScanViewSet(ModelViewSet):
             patient = serializer.save()
             return Response({'patient': patient}, status=status.HTTP_201_CREATED, template_name='prediction.html')           
         if request.method == 'GET':
+            # patient = get_object_or_404(Patient, serial_no=request)
             patient = request.data
             return Response({'patient': patient, 'next_step': 'scan-predict', 'next_name': 'Predict Diagnosis', 'message': 'Chest X-ray recorded successfully.'}, status=status.HTTP_200_OK, template_name='medical_scan.html')
         
     @action(methods=['get', 'post'], detail=False, url_name='predict', url_path='predict.html', renderer_classes = [TemplateHTMLRenderer])
     def predict(self, request):
-        chest_model = tf.keras.models.load_model('models/best_model_4.keras') # load chest model
+        model_path = os.path.join(settings.BASE_DIR, 'models', 'best_model_8.keras')
+        chest_model = tf.keras.models.load_model(model_path) # load chest model
         if request.method == 'POST':
-            serializer = ClinicalResultSerializer(request.data)
+            serializer = PredTypeSerializer(data=request.data)
 
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='predict.html')
             
             patient = serializer.save()
 
-            scan_done = serializer.validated_data['scan_type']
-            if scan_done == 'x_ray':
-                scan_content = serializer.validated_data['content']
-                img_path = f'data/scan/chest/{scan_content}'
-                image = cv2.imread(img_path)
+            scan_done = serializer.validated_data['pred_type']
+            patient = serializer.validated_data['serial_no']
+            content_scan = MedicalScan.objects.filter(patient=patient).order_by('-date').first()
+            print(content_scan)
+            if scan_done == 'chest':
+                # Step 1: Extract the path from the URL
+                url = content_scan.scan_content
+                url = os.path.join(settings.BASE_DIR, str(url))
+                print(url)
+
+                print(url)
+                image = cv2.imread((url))
                 if image is None:
                     return None
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 image = cv2.resize(image, (224, 224))
                 image = image / 255.0
+                print(image.shape)
 
-                prediction_probablities = chest_model.predict(image)
+                prediction_probablities = chest_model.predict(np.expand_dims(image, axis=0))[0]
                 prediction_class = np.argmax(prediction_probablities)
                 final_classes = ['Atelectasis', 'Cardiomegaly', 'Consolidation',
                  'Edema', 'Effusion', 'Emphysema', 'Fibrosis', 'Hernia',
                  'Infiltration', 'Mass', 'No Finding', 'Nodule',
                  'Pleural_Thickening', 'Pneumonia', 'Pneumothorax']
-                index = prediction_probablities.get_index(prediction_class)
-                class_name = final_classes[index]
+                # index = prediction_probablities.get_index(prediction_class)
+                class_name = final_classes[prediction_class]
                 risk_class = 0 if class_name == 'No Finding' else 1
                 dis_diag = prediction_class
-                predicted_class = np.argmax(chest_model.predict(image))
-                conf_score = prediction_probablities[predicted_class] * 100
+                conf_score = round(prediction_probablities[prediction_class] * 100, 4)
+                print(class_name)
+                print(conf_score)
+                np.set_printoptions(suppress=True) 
+                probs = np.round(prediction_probablities * 100, 2)
+                print(probs )
+                print()
 
-                pred = Prediction.objects.create(patient=patient, confidence_score=conf_score, predicted_class=predicted_class, predicted_name=class_name, class_probabilities=prediction_probablities, risk_class=risk_class, disease_class=dis_diag)
-            return Response({'pred': pred}, status=status.HTTP_201_CREATED, template_name='confirmation.html')      
+                pred = Prediction.objects.create(patient=patient, confidence_score=conf_score, predicted_class=prediction_class, predicted_name=class_name, classes_probabilities=probs, risk_class=risk_class, disease_class=dis_diag)
+            return Response({'pred': pred}, status=status.HTTP_201_CREATED, template_name='reports.html')      
         if request.method == 'GET':
             patient = request.session.get('patient')
             # patient = request.data
@@ -544,7 +600,7 @@ class PredictViewSet(ModelViewSet):
     @action(methods=['get', 'post'], detail=False, url_name='prediction', url_path='prediction.html', renderer_classes = [TemplateHTMLRenderer])
     def prediction(self, request):
         if request.method == 'POST':
-            serializer = PredictionSerializer(request.data)
+            serializer = PredictionSerializer(data=request.data)
 
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='prediction.html')
@@ -580,7 +636,7 @@ class ReportViewSet(ModelViewSet):
     @action(methods=['get', 'post'], detail=False, url_name='reports', url_path='reports.html', renderer_classes = [TemplateHTMLRenderer])
     def reports(self, request):
         if request.method == 'POST':
-            serializer = ClinicalResultSerializer(request.data)
+            serializer = ClinicalResultSerializer(data=request.data)
 
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='reports.html')

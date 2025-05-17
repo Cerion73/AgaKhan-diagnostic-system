@@ -7,8 +7,6 @@ from django.utils import timezone
 GENDER_CHOICES = (
     ('F', 'Female'),
     ('M', 'Male'),
-    ('I', 'Intersex'),
-    ('O', 'Other')
 )
 SCAN_TYPE = (
     ('ecg', 'ECG Reading Images'),
@@ -17,17 +15,17 @@ SCAN_TYPE = (
     ('x_ray', 'Chest X-Ray')
 )
 HABITS_CHOICES = (
-    ('low', 'Low'),
-    ('moderate', 'Moderate'),
-    ('high', 'High')
+    ('Low', 'Low'),
+    ('Medium', 'Medium'),
+    ('High', 'High')
 )
 TF_CHOICES = (
     ('false', 'Positive'),
     ('true', 'Negative')
 )
 YN_CHOICES = (
-    ('no', 'No'),
-    ('yes', 'Yes')
+    ('No', 'No'),
+    ('Yes', 'Yes')
 )
 PRED_TYPE = (
     ('ecg', 'ECG Reading Images'),
@@ -59,7 +57,7 @@ class CustomUser(AbstractUser):
     phone = models.CharField(max_length=20, null=False)
     branch = models.ForeignKey('Branch', on_delete=models.SET_NULL, null=True)
     serial_no = models.CharField(max_length=200, unique=True, primary_key=True)
-    gender = models.CharField(max_length=200, choices=GENDER_CHOICES, default='F')
+    sex = models.CharField(max_length=200, choices=GENDER_CHOICES, default='F')
     
 
     USERNAME_FIELD = 'serial_no'
@@ -123,39 +121,39 @@ class ECG(models.Model):
 
 class LabResults(models.Model):
     patient = models.ForeignKey('Patient', on_delete=models.SET_NULL, null=True)
-    low_hdl = models.BooleanField(default=False)
-    high_ldl = models.BooleanField(default=False)
-    chol_level = models.CharField(max_length=100)
-    trig_level = models.CharField(max_length=100)
-    crp_level = models.CharField(max_length=100)
-    fasting_blood_sugar = models.CharField(max_length=100)
-    homo_level = models.CharField(max_length=100)
+    low_hdl = models.CharField(max_length=50, choices=YN_CHOICES, default='No')
+    high_ldl = models.CharField(max_length=50, choices=YN_CHOICES, default='No')
+    chol_level = models.IntegerField()
+    trig_level = models.IntegerField(max_length=100)
+    crp_level = models.FloatField(max_length=100)
+    fasting_blood_sugar = models.IntegerField(max_length=100)
+    homo_level = models.FloatField(max_length=100)
     date = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(Practitioner, on_delete=models.SET_NULL, null=True)
 
 class ClinicalResult(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True)
-    diabetes = models.BooleanField(default=False)
+    diabetes = models.CharField(max_length=50, choices=YN_CHOICES, default='No')
     bmi = models.FloatField(default=0.0)
-    hbp = models.BooleanField(default=False)
+    hbp = models.CharField(max_length=50, choices=YN_CHOICES, default='No')
     date = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(Practitioner, on_delete=models.SET_NULL, null=True)
 
 class Examination(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True)
     ex_habits = models.CharField(max_length=50, choices=HABITS_CHOICES, default='low')
-    smoking_habits = models.CharField(max_length=50, choices=HABITS_CHOICES, default='low')
-    family_history = models.BooleanField(default=False)
+    smoking_habits = models.CharField(max_length=50, choices=YN_CHOICES, default='No')
+    family_history = models.CharField(max_length=50, choices=YN_CHOICES, default='No')
     alc_habits = models.CharField(max_length=50, choices=HABITS_CHOICES, default='low')
     avrg_sleep = models.FloatField(default=0.0)
     sugar_cons = models.CharField(max_length=50, choices=HABITS_CHOICES, default='low')
     stress_levels = models.CharField(max_length=50, choices=HABITS_CHOICES, default='low')
-    bp = models.FloatField(default=0.0)
+    bp = models.IntegerField()
     date = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(Practitioner, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
-        return f'{self.patient.first_name} - {self.patient.branch} - {self.patient.serial_no}'
+        return f'{self.patient.first_name} - {self.patient.location} - {self.patient.serial_no}'
     
 class Prediction(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True)
@@ -163,7 +161,7 @@ class Prediction(models.Model):
     confidence_score = models.FloatField(default=0.0)
     predicted_class = models.IntegerField()
     predicted_name = models.CharField(max_length=200)
-    classes_probablities = models.CharField(max_length=500)
+    classes_probabilities = models.CharField(max_length=500)
     risk_class = models.IntegerField()
     disease_class = models.IntegerField()
     date = models.DateTimeField(auto_now=True)
@@ -184,4 +182,6 @@ class Report(models.Model):
     served_by = models.ForeignKey(Practitioner, on_delete=models.SET_NULL, null=True)
     recommended_treatment = models.TextField(max_length=5000)
 
-
+class PredType(models.Model):
+    serial_no = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True)
+    pred_type = models.CharField(max_length=100)
