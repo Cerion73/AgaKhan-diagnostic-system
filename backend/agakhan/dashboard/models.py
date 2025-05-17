@@ -72,6 +72,8 @@ class Practitioner(models.Model):
     otp = models.CharField(max_length=6)
     verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
+    trial_counter = models.IntegerField(default=0)
+    trial_start = models.DateTimeField(default=timezone.now)
 
 
     def __str__(self):

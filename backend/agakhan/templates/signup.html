@@ -9,8 +9,8 @@
             <h2 class="welcome-text text-center">Welcome</h2>
             <p class="instruction-text text-center">To proceed with the diagnostic process, sign up to your account below:</p>
             
-            <!-- {{ user }} -->
             <form id="signupForm">
+                <i id="error_tag" style="color: brown; font-style: normal; margin-top: 16px; font-weight: bold;"></i>
                 {% csrf_token %}
                 <div class="mb-3">
                     <label class="form-label">Name</label>
@@ -34,14 +34,24 @@
                     <input type="tel" class="form-control" name="phone" required>
                 </div>
 
+                
+
                 <div class="mb-3">
                     <label class="form-label">Password</label>
-                    <input type="password" class="form-control" name="password" required>
+                    <div class="input-group">
+                        <input type="password" class="form-control" name="password" required>
+                        <span class="input-group-text toggle-password" style="cursor: pointer; height: 2.5rem;">👁️</span>
+                    </div>
+                    <div class="invalid-feedback" id="passwordError"></div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Confirm Password</label>
-                    <input type="password" class="form-control" name="confirm_password" required>
+                    <div class="input-group">
+                        <input type="password" class="form-control" name="confirm_password" required>
+                        <span class="input-group-text toggle-password" style="cursor: pointer; height: 2.5rem;">👁️</span>
+                    </div>
+                    <div class="invalid-feedback" id="confirmError"></div>
                 </div>
 
                 <div class="mb-3">
@@ -54,9 +64,9 @@
                     </select>
                 </div>
 
-                <div class="mb-3" style="margin-bottom: 40px;"></div>
+                <div class="mb-3" style="margin-bottom: 40px;">
                     <label class="form-label">Gender</label>
-                    <select class="form-select" name="sex" required  style="margin-bottom: 32px;">
+                    <select class="form-select" name="sex" required style="margin-bottom: 32px;">
                         <option value="" disabled>Select...</option>
                         <option value="F">Female</option>
                         <option value="M">Male</option>
@@ -73,7 +83,14 @@
     </div>
 
     <script>
-        // Add JavaScript to handle form submission and branch loading
+        // Password visibility toggle
+        document.querySelectorAll('.toggle-password').forEach(icon => {
+            icon.addEventListener('click', function() {
+                const input = this.previousElementSibling;
+                const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                input.setAttribute('type', type);
+            });
+        });
 
         // Get CSRF token function
         function getCookie(name) {
@@ -93,18 +110,47 @@
 
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const form = e.target;
             
+            // Get password values
+            const password = form.password.value;
+            const confirmPassword = form.confirm_password.value;
+            const passwordError = document.getElementById('passwordError');
+            const confirmError = document.getElementById('confirmError');
+            const error_tag = document.getElementById('error_tag');
+
+            // Clear previous errors
+            passwordError.innerText = '';
+            confirmError.innerText = '';
+            form.password.classList.remove('is-invalid');
+            form.confirm_password.classList.remove('is-invalid');
+
+            // Validate password match
+            if (password !== confirmPassword) {
+                confirmError.innerText = 'Passwords do not match';
+                form.confirm_password.classList.add('is-invalid');
+                return;
+            }
+
+            // Validate password strength
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+            if (!passwordRegex.test(password)) {
+                error_tag.innerText = 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number';
+                form.password.classList.add('is-invalid');
+                return;
+            }
+
+            // Prepare form data
             const formData = {
-                first_name: e.target.first_name.value,
-                last_name: e.target.last_name.value,
-                serial_no: e.target.serial_no.value,
-                phone: e.target.phone.value,
-                password: e.target.password.value,
-                confirm_password: e.target.confirm_password.value,
-                branch: parseInt(e.target.branch.value),
-                gender: e.target.sex.value
+                first_name: form.first_name.value,
+                last_name: form.last_name.value,
+                serial_no: form.serial_no.value,
+                phone: form.phone.value,
+                password: password,
+                confirm_password: confirmPassword,
+                branch: parseInt(form.branch.value),
+                gender: form.sex.value
             };
-            console.log(formData)
 
             try {
                 const response = await fetch("{% url 'users-signup' %}", {
@@ -116,7 +162,6 @@
                     body: JSON.stringify(formData),
                 });
 
-                console.log(response)
                 if (response.ok) {
                     window.location.href = "{% url 'users-otp_verify' %}";
                 } else {
@@ -128,22 +173,6 @@
                 alert('An error occurred during registration');
             }
         });
-
-        // // Load branches dynamically
-        // async function loadBranches() {
-        //     const response = await fetch('/api/branches/');
-        //     const branches = await response.json();
-        //     const select = document.querySelector('select[name="branch"]');
-            
-        //     branches.forEach(branch => {
-        //         const option = document.createElement('option');
-        //         option.value = branch.id;
-        //         option.textContent = branch.name;
-        //         select.appendChild(option);
-        //     });
-        // }
-
-        // loadBranches();
     </script>
 </body>
 {% endblock %}

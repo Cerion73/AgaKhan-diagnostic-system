@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAuthenticated
 from dashboard.models import Patient, Practitioner, MedicalScan, ClinicalResult, Branch, CustomUser, Examination, LabResults, Prediction, Report, SCAN_TYPE, ECG
-from dashboard.serializers import PractitionerSerializer, PatientSerializer, BranchSerializer,ClinicalResultSerializer, MedicalScanSerializer, UserSerializer, LabResultsSerializer, ExaminationSerializer, PredictionSerializer, ReportSerializer, ECGSerializer, PredTypeSerializer, OTPVerifySerializer
+from dashboard.serializers import PractitionerSerializer, PatientSerializer, BranchSerializer,ClinicalResultSerializer, MedicalScanSerializer, UserSerializer, LabResultsSerializer, ExaminationSerializer, PredictionSerializer, ReportSerializer, ECGSerializer, PredTypeSerializer, OTPVerifySerializer, SignInSerializer, ResendOTPSerializer
 from django.shortcuts import get_object_or_404
 from random import randint
 from django.utils import timezone
@@ -43,32 +43,46 @@ class PractitionerViewset(ModelViewSet):
     @action(methods=['get', 'post'], detail=False, url_name='signin', url_path='signin.html', renderer_classes = [TemplateHTMLRenderer], permission_classes=[AllowAny])
     def signin(self, request):
         branches = Branch.objects.all()
+        context = {'branches': branches}
 
         if request.method == 'POST':
-            serializer = PractitionerSerializer(data=request.data)
+            print(request.data)
+            serializer = SignInSerializer(data=request.data)
             print(request)
+            
+            if not serializer.is_valid():
+                return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST, template_name='signin.html')
 
-            if serializer.is_valid():
-                password = serializer.validated_data['password']
-                serial_no = serializer.validated_data['serial_no']
-                branch = serializer.validated_data['branch']
-                
-                print(serial_no)
-                user = authenticate(request, serial_no=serial_no, password=password)
-                print(user.last_name)
+        
+            password = serializer.validated_data['password']
+            user = serializer.validated_data['user']
+            branch = serializer.validated_data['branch']
+            
+            print(user.serial_no)
+            user = authenticate(request, serial_no=user.serial_no, password=password, branch=branch)
+            print(user)
 
-                print(serial_no)
-                login(request, user)
-                phone_number = user.phone
+            print(user.serial_no)
+            login(request, user)
+            phone_number = user.phone
 
-                try:
-                    with transaction.atomic():
-                        otp = str(secrets.randbelow(900000) + 100000)
-                        user.otp = otp
-                        user.created_at = timezone.now()
-                        user.is_verified = False
-                        user.save()
+            try:
+                with transaction.atomic():
+                    pract_user = get_object_or_404(Practitioner, user=user)
+                    otp = str(secrets.randbelow(900000) + 100000)
+                    pract_user.otp = otp
+                    pract_user.created_at = timezone.now()
+                    pract_user.is_verified = False
+                    if timezone.now - pract_user.trial_start > timezone.timedelta(hours=6):
+                        pract_user.trial_start = timezone.now()
+                    pract_user.save()
+                    print(pract_user)
 
+                    context['serial_no'] = user.serial_no
+                    context['phone_number'] = user.phone
+                    context['user'] = pract_user
+
+                    if pract_user.trial_counter > 5 and timezone.now - pract_user.trial_start < timezone.timedelta(hours=6):
                         ref_id = str(uuid.uuid4())
 
                         payload = {
@@ -82,7 +96,7 @@ class PractitionerViewset(ModelViewSet):
                             'Authorization': f'Bearer {TIARA_CONNECT_API_KEY}',
                             'Content-Type': 'application/json',
                         }
-                        print(serial_no)
+                        print(pract_user.user.serial_no)
 
                         response = requests.post(
                             'https://api2.tiaraconnect.io/api/messaging/sendsms',
@@ -91,63 +105,90 @@ class PractitionerViewset(ModelViewSet):
                         )
 
                         if response.status_code == 200:
-                            return Response({'message': 'OTP sent successfully.'}, template_name='otp_verify.html')
+                            print(response)
+                            context['message'] = 'OTP sent successfully.'
+                            return Response(context, template_name='otp_verify.html', status=status.HTTP_200_OK)
 
-                        else:
-                            return Response({'error': 'Failed to send OTP. Please try again.'},
+                        return Response({'error': 'Failed to send OTP. Please try again.'},
                                         status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                        template_name='otp_request.html')
+                                        template_name='signin.html')
 
-                except Exception as e:
-                    # Optional logging here
-                    return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='signup.html')
-            return Response({'error': 'Check your credentials!'}, template_name='signin.html',status=status.HTTP_200_OK)
+            except Exception as e:
+                # Optional logging here
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='signup.html')
+            return Response({'error': 'Check your credentials!'}, template_name='signin.html',status=status.HTTP_401_UNAUTHORIZED)
         return Response({'branches': branches}, status=status.HTTP_200_OK, template_name='signin.html')
         
-    @action(methods=['get', 'post'], detail=False, url_name='otp_request', url_path='otp_request.html', renderer_classes = [TemplateHTMLRenderer])
-    def otp_request(self, request):
-        if request.method == 'POST':
-            serializer = PractitionerSerializer(data=request.data)
+    @action(methods=['post'], detail=False, url_name='resend_otp', renderer_classes = [TemplateHTMLRenderer],)
+    def resend_otp(self, request):
+        context = {}
+        serializer = ResendOTPSerializer(data=request.data)
 
-            if serializer.is_valid():
-                phone_number = serializer.validated_data['phone']
-                otp = str(secrets.randbelow(900000)+100000)
-                user = Practitioner.objects.get(user=request.user)
-                try:
-                    with transaction.atomic():
-                        user.otp = otp
-                        user.created_at = timezone.now()
-                        user.is_verified = False
-                        user.save()
+        if not serializer.is_valid():
+            print(serializer.error_messages)
+            return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST, template_name='otp_verify.html')
+        
+        # fetch the user's data
+        user = serializer.validated_data['user']
+        phone_number = serializer.validated_data['phone_number']
 
-                        ref_id = str(uuid.uuid4())
-                        payload = {
-                            "from": "TIARACONECT",
-                            "to": phone_number,
-                            "message": f"Your OTP is {otp}",
-                        }
-                        headers = {
-                            'Authorization': f'Bearer {TIARA_CONNECT_API_KEY}',
-                            'Content-Type': 'application/json',
-                        }
-
-                        response = requests.post(
-                            'https://api2.tiaraconnect.io/api/messaging/sendsms',
-                            json=payload,
-                            headers=headers
-                        )
+        context['user'] = user
+        context['phone_number'] = phone_number
+        print(user)
 
 
+        # generate a new otp for the user
+        otp = str(secrets.randbelow(900000)+100000)
+        try:
+            with transaction.atomic():
+                pract_user = get_object_or_404(Practitioner, user=user.serial_no)
+                # set the new otp and send it to the user
+                pract_user.otp = otp
+                pract_user.created_at = timezone.now()
+                pract_user.is_verified = False
+                pract_user.trial_counter += 1
+                if timezone.now - pract_user.trial_start > timezone.timedelta(hours=6):
+                    pract_user.trial_start = timezone.now()
+                pract_user.save()
 
-                        if response.status_code == 200:
-                            return Response({'message': 'OTP sent successfully.'}, template_name='otp_verify.html', status=status.HTTP_403_FORBIDDEN)
 
-                        return Response({'error': 'Failed to send OTP. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='otp_request.html')
+                context['user'] = pract_user
+                context['phone_number'] = phone_number
+                context['serial_no'] = pract_user.user.serial_no
 
-                except Exception as e:
-                    return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='otp_request.html')
-            
-        return Response(status=status.HTTP_200_OK, template_name='otp_request.html')
+                if pract_user.trial_counter > 5 and timezone.now - pract_user.trial_start < timezone.timedelta(hours=6):
+                    ref_id = str(uuid.uuid4())
+                    payload = {
+                        "from": "TIARACONECT",
+                        "to": phone_number,
+                        "message": f"Your OTP is {otp}",
+                    }
+                    headers = {
+                        'Authorization': f'Bearer {TIARA_CONNECT_API_KEY}',
+                        'Content-Type': 'application/json',
+                    }
+
+                    response = requests.post(
+                        'https://api2.tiaraconnect.io/api/messaging/sendsms',
+                        json=payload,
+                        headers=headers
+                    )
+
+
+
+                    if response.status_code == 200:
+                        # redirect to the same page
+                        context['message'] = 'OTP sent successfully.'
+                        return Response(context, template_name='otp_verify.html', status=status.HTTP_200_OK)
+                    context['error'] = 'Failed to send OTP. Please try again.'
+                    return Response(context,status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='otp_verify.html')
+                
+                context['error'] = 'Failed to send OTP. Please try again.'
+                return Response(context, status=status.HTTP_403_FORBIDDEN, template_name='otp_verify.html')
+
+        except Exception as e:
+            print(e)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='otp_verify.html')
     
 
     @action(methods=['get', 'post'], detail=False, url_name='otp_verify', url_path='otp_verify.html', renderer_classes = [TemplateHTMLRenderer])

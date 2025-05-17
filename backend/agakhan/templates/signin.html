@@ -59,7 +59,7 @@
         e.preventDefault();
         
         const formData = {
-            serial_no: e.target.serial_no.value,
+            user: e.target.serial_no.value,
             password: e.target.password.value,
             branch: parseInt(e.target.branch.value),
         };
@@ -78,6 +78,7 @@
             console.log(response)
             if (response.ok) {
                 window.location.href = "{% url 'users-otp_verify' %}";
+                // console.log(response)
             } else {
                 const errorData = await response.json();
                 alert(`Error: ${errorData.detail || 'Unknown error'}`);

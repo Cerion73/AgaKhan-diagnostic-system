@@ -16,6 +16,8 @@
 
         <i style="color: #dc3545; font-weight: 900;">{{ error }}</i>
 
+        <i style="color: #dc3545; font-weight: 900;">{{ message }}</i>
+
         <!-- Input for users -->
         <label for="otp">Your {{user.serial_no}} One Time Password (OTP) has be sent on {{user.phone}}</label>
         {% csrf_token %}
@@ -29,10 +31,10 @@
         <button type="submit" class="btn btn-primary w-46">Verify OTP</button>
     </form>
     
-    <div style="margin-top: 1rem; text-align: center;">
-        <a href="{% url 'users-otp_verify' %}" style="color: var(--primary-color); text-decoration: none;" id="resend_otp">
+    <div style="margin-top: 1rem; text-align: center;" >
+        <button style="color: var(--primary-color); text-decoration: none; color: azure;" id="resend_otp" class="btn btn-secondary w-46">
             Resend OTP
-        </a>
+        </button>
     </div>
 </div>
 <script>
@@ -75,6 +77,38 @@
 
             if (response.ok) {
                 window.location.href = "{% url 'users-home' %}";
+            } else {
+                const errorData = await response.json();
+                alert(`Error: ${errorData.detail || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred during registration');
+        }
+    });
+
+
+    // resending otp
+    document.getElementById('resend_otp').addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            user: "{{ user.serial_no|escapejs }}",
+            phone_number: "{{ user.phone|escapejs }}",
+        };
+
+        try {
+            const response = await fetch("{% url 'users-resend_otp' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                window.location.href = "{% url 'users-otp_verify' %}";
             } else {
                 const errorData = await response.json();
                 alert(`Error: ${errorData.detail || 'Unknown error'}`);

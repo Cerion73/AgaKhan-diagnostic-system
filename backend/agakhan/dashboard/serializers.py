@@ -62,6 +62,32 @@ class OTPVerifySerializer(serializers.Serializer):
         except CustomUser.DoesNotExist:
             raise serializers.ValidationError("User with that serial number does not exist.")
 
+class SignInSerializer(serializers.Serializer):
+    user = serializers.CharField()
+    password = serializers.CharField()
+    branch = serializers.IntegerField()
+
+    def validate(self, data):
+        try:
+            user = CustomUser.objects.get(serial_no=data['user'])
+            data['user'] = user
+            return data
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError("User with that serial number does not exist.")
+
+class ResendOTPSerializer(serializers.Serializer):
+    user = serializers.CharField()
+    phone_number = serializers.CharField()
+
+    def validate(self, data):
+        try:
+            user = CustomUser.objects.get(serial_no=data['user'])
+            data['user'] = user
+            return data
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError("User with that serial number does not exist.")
+
+
 class BranchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
