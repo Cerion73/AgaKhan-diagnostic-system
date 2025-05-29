@@ -2,7 +2,7 @@ import PIL.Image
 from django.shortcuts import render
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
-from rest_framework.renderers import TemplateHTMLRenderer
+from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 from rest_framework.decorators import action
 from rest_framework import status
 from rest_framework.parsers import JSONParser
@@ -32,6 +32,9 @@ import cv2, os
 import pandas as pd
 from django.conf import settings
 from urllib.parse import urlparse
+from django.db.models import Avg
+from datetime import date
+
 # from django.contrib.auth import authenticate
 # Create your views here.
 
@@ -156,7 +159,7 @@ class PractitionerViewset(ModelViewSet):
                 context['phone_number'] = phone_number
                 context['serial_no'] = pract_user.user.serial_no
 
-                if pract_user.trial_counter > 5 and timezone.now - pract_user.trial_start < timezone.timedelta(hours=6):
+                if pract_user.trial_counter < 5 and timezone.now - pract_user.trial_start < timezone.timedelta(hours=6):
                     ref_id = str(uuid.uuid4())
                     payload = {
                         "from": "TIARACONECT",
@@ -183,7 +186,7 @@ class PractitionerViewset(ModelViewSet):
                     context['error'] = 'Failed to send OTP. Please try again.'
                     return Response(context,status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='otp_verify.html')
                 
-                context['error'] = 'Failed to send OTP. Please try again.'
+                context['error'] = 'Failed to send OTP. You are only allowed to request OTP five times in six hours duration.'
                 return Response(context, status=status.HTTP_403_FORBIDDEN, template_name='otp_verify.html')
 
         except Exception as e:
@@ -397,7 +400,7 @@ class LabResultsViewSet(ModelViewSet):
             print(patient)    
             return Response({'patient': patient}, status=status.HTTP_200_OK, template_name='lab_results.html')
 
-    @action(methods=['get', 'post'], detail=False, url_name='predict', url_path='predict.html', renderer_classes = [TemplateHTMLRenderer])
+    @action(methods=['get', 'post'], detail=False, url_name='predict', url_path='predict.html', renderer_classes = [TemplateHTMLRenderer, JSONRenderer])
     def predict(self, request):
         # load the model and preprocessor
         model_path = os.path.join(settings.BASE_DIR, 'models', 'best_model.h5')
@@ -408,27 +411,25 @@ class LabResultsViewSet(ModelViewSet):
 
             if not serializer.is_valid():
                 print(serializer.error_messages)
-                return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='predict.html')
-            patient = serializer.save()
-            print(patient)
+                return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED)
+            
             serial_no = serializer.validated_data['serial_no']
-            print(serial_no.serial_no)
-            serial_no = serial_no.serial_no
-            user = get_object_or_404(Patient, serial_no=serial_no)
-            print(user)
+            print(serial_no)
+            patient = get_object_or_404(Patient, serial_no=serial_no)
+            print(patient)
             lab = get_object_or_404(LabResults, patient=serial_no)
             print(lab)
             clinic = get_object_or_404(ClinicalResult, patient=serial_no)
             print(clinic)
             exam = get_object_or_404(Examination, patient=serial_no)
             print(exam)
-            dob = user.dob 
+            dob = patient.dob 
             print(dob) # Convert to `date` object if it's a datetime
             clinic_date = lab.date  # Same here
 
             print(clinic_date)
             age = clinic_date.year - dob.year - ((clinic_date.month, clinic_date.day) < (dob.month, dob.day))
-            gender = user.gender
+            gender = patient.gender
             bp = exam.bp
             chol = lab.chol_level
             ex_habits = exam.ex_habits
@@ -465,14 +466,45 @@ class LabResultsViewSet(ModelViewSet):
             class_name = 'No' if pred_class == 0 else 'Yes'
             conf_score = np.round(probability if pred_class == 1 else 1 - probability, 4)
 
-            pred = Prediction.objects.create(patient=user, prediction_type='disease', confidence_score= conf_score, predicted_class = pred_class, predicted_name=class_name, classes_probabilities=f'[{probability}, {1 - probability}]', risk_class=float(pred_class), disease_class=pred_class, date=timezone.now())
+            pred = Prediction.objects.create(patient=patient, prediction_type='lab', confidence_score= conf_score, predicted_class = pred_class, predicted_name=class_name, classes_probabilities=f'[{probability}, {1 - probability}]', risk_class=float(pred_class), disease_class=pred_class, date=timezone.now())
             print(pred.predicted_name)
 
-            return Response({'pred': pred}, template_name='reports.html', status=status.HTTP_201_CREATED)
+            predictions = Prediction.objects.filter(patient=patient).order_by('-date')
+            
+            # get the last visit or predictions made in the last visit
+            last_ecg = ECG.objects.filter(patient=patient).order_by('-date').first()
+            last_lab = LabResults.objects.filter(patient=patient).order_by('-date').first()
+            last_chest = MedicalScan.objects.filter(patient=patient).order_by('-date').first()
+
+            
+
+            
+            context = {
+                'patient': PatientSerializer(patient).data,
+                'pred': PredictionSerializer(pred).data,
+                'predictions': PredictionSerializer(predictions, many=True).data,
+                'age': age,
+                'lab_count': predictions.filter(prediction_type='lab').count(),
+                'ecg_count': predictions.filter(prediction_type='ecg').count(),
+                'chest_count': predictions.filter(prediction_type='chest').count(),
+                'avg_confidence': predictions.aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0,
+                'high_risk_count': predictions.filter(risk_class=True).count(),
+            }
+
+            # Return JSON with redirect info for API calls
+            if request.accepted_renderer.format == 'json':
+                context['patient_id'] = patient.serial_no
+                return Response({
+                    'redirect_url': reverse('report-reports') + f'?patient_id={patient.serial_no}',
+                    'context': context
+                }, status=status.HTTP_201_CREATED)
+            
+            # Return HTML template for direct browser access
+            return Response(context, template_name='report.html', status=status.HTTP_201_CREATED)
         if request.method == 'GET':
+            # Fetch the availabe patients
             patient = Patient.objects.all()
-            # patient = request.data
-            print(patient) 
+            
             return Response({'patient': patient}, template_name='predict.html', status=status.HTTP_200_OK)
             
 
@@ -543,7 +575,21 @@ class ECGViewSet(ModelViewSet):
                 dis_diag = predicted_class
                 pred = Prediction.objects.create(patient=patient, confidence_score=conf_score, predicted_class=predicted_class, predicted_name=class_name, classes_probabilities=probs.tolist(), risk_class=risk_class, disease_class=dis_diag)
 
-            return Response({'pred': pred}, status=status.HTTP_201_CREATED, template_name='reports.html')      
+            predictions = Prediction.objects.filter(patient=patient).order_by('-date')
+            print(predictions[0])
+
+            context = {
+                'patient': patient,
+                'pred': pred,
+                'predictions': list(predictions),
+                'lab_count': predictions.filter(prediction_type='lab').count(),
+                'ecg_count': predictions.filter(prediction_type='ecg').count(),
+                'chest_count': predictions.filter(prediction_type='chest').count(),
+                'avg_confidence': predictions.aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0,
+                'high_risk_count': predictions.filter(risk_class=True).count(),
+            }
+
+            return Response(context, status=status.HTTP_201_CREATED, template_name='reports.html')      
         if request.method == 'GET':
             patient = Patient.objects.all()
             # patient = request.data
@@ -621,14 +667,28 @@ class MedicalScanViewSet(ModelViewSet):
                 print()
 
                 pred = Prediction.objects.create(patient=patient, confidence_score=conf_score, predicted_class=prediction_class, predicted_name=class_name, classes_probabilities=probs, risk_class=risk_class, disease_class=dis_diag)
-            return Response({'pred': pred}, status=status.HTTP_201_CREATED, template_name='reports.html')      
+            predictions = Prediction.objects.filter(patient=patient).order_by('-date')
+            print(predictions[0])
+
+            context = {
+                'patient': patient,
+                'pred': [pred],
+                'predictions': list(predictions),
+                'lab_count': predictions.filter(prediction_type='lab').count(),
+                'ecg_count': predictions.filter(prediction_type='ecg').count(),
+                'chest_count': predictions.filter(prediction_type='chest').count(),
+                'avg_confidence': predictions.aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0,
+                'high_risk_count': predictions.filter(risk_class=True).count(),
+            }
+
+            return Response(context, status=status.HTTP_201_CREATED, template_name='reports.html')      
         if request.method == 'GET':
             patient = request.session.get('patient')
             # patient = request.data
             print(patient)     
             return Response({'patient': patient}, status=status.HTTP_200_OK, template_name='predict.html')
 
-class BrachViewSet(ModelViewSet):
+class BranchViewSet(ModelViewSet):
     queryset = Branch.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = BranchSerializer
@@ -674,19 +734,48 @@ class ReportViewSet(ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = ReportSerializer
 
-    @action(methods=['get', 'post'], detail=False, url_name='reports', url_path='reports.html', renderer_classes = [TemplateHTMLRenderer])
+    @action(methods=['get'], detail=False, 
+            url_name='reports', url_path='', 
+            renderer_classes=[TemplateHTMLRenderer])
     def reports(self, request):
-        if request.method == 'POST':
-            serializer = ClinicalResultSerializer(data=request.data)
-
-            if not serializer.is_valid():
-                return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='reports.html')
-            
-            patient = serializer.save()
-
-            return Response({'patient': patient}, status=status.HTTP_201_CREATED, template_name='confirmation.html')           
-        if request.method == 'GET':
-            patient = request.data
-            return Response({'patient': patient}, status=status.HTTP_200_OK, template_name='reports.html')
+        patient_id = request.query_params.get('patient_id')
+        if not patient_id:
+            return Response({"error": "Patient ID is required"}, 
+                           status=status.HTTP_400_BAD_REQUEST,
+                           template_name='error.html')
+        
+        try:
+            patient = Patient.objects.get(serial_no=patient_id)
+        except Patient.DoesNotExist:
+            return Response({"error": "Patient not found"}, 
+                           status=status.HTTP_404_NOT_FOUND,
+                           template_name='error.html')
+        
+        # Calculate age
+        today = date.today()
+        age = today.year - patient.dob.year - (
+            (today.month, today.day) < (patient.dob.month, patient.dob.day))
+        
+        # Get predictions
+        predictions = Prediction.objects.filter(patient=patient).order_by('-date')
+        
+        # Get latest dates
+        latest_ecg = predictions.filter(prediction_type='ecg').first()
+        latest_lab = predictions.filter(prediction_type='lab').first()
+        
+        context = {
+            'patient': PatientSerializer(patient).data,
+            'predictions': PredictionSerializer(predictions, many=True).data,
+            'age': age,
+            'lab_count': predictions.filter(prediction_type='lab').count(),
+            'ecg_count': predictions.filter(prediction_type='ecg').count(),
+            'chest_count': predictions.filter(prediction_type='chest').count(),
+            'avg_confidence': predictions.aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0,
+            'high_risk_count': predictions.filter(risk_class=True).count(),
+            'latest_ecg_date': latest_ecg.date if latest_ecg else "N/A",
+            'latest_lab_date': latest_lab.date if latest_lab else "N/A",
+        }
+        
+        return Response(context, template_name='report.html')
 
 

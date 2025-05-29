@@ -32,9 +32,7 @@ PRED_TYPE = (
     ('mri', 'MRI Scan'),
     ('ct_scans', 'CT-Scan'),
     ('x_ray', 'Chest X-Ray'),
-    ('lab', 'Lab Test Predictions'),
-    ('clinic', 'Clinical Assessment Predictions'),
-    ('exam', 'Examination Stage Prediction')
+    ('lab', 'Lab Test Predictions')
 )
 
 class CustomUserManager(BaseUserManager):
@@ -184,6 +182,6 @@ class Report(models.Model):
     served_by = models.ForeignKey(Practitioner, on_delete=models.SET_NULL, null=True)
     recommended_treatment = models.TextField(max_length=5000)
 
-class PredType(models.Model):
-    serial_no = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True)
-    pred_type = models.CharField(max_length=100)
+# class PredType(models.Model):
+#     serial_no = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True)
+#     pred_type = models.CharField(max_length=100)

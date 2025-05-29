@@ -6,6 +6,8 @@
 {% block content %}
 <div class="aga-card">
     <h2 style="color: var(--primary-color); margin-bottom: 1.5rem;">OTP Verification</h2>
+
+    {{ serrial_no }}
     
     <form id="verify_form" method="post" action="{% url 'users-otp_verify' %}">
 

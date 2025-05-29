@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="container py-5">
-    <div class="row justify-content-center">
+    <div class="row justify-content-center" id="report">
         <div class="col-md-8">
             <div class="card shadow rounded-4">
                 <div class="card-body px-5 py-4">
@@ -13,14 +13,16 @@
                             {{ message }}
                         </div>
                     {% endif %}
+                    
+                    <!-- Prediction Form -->
                     <form id="predictForm" method="post">
                         {% csrf_token %}
                         <div class="mb-4">
-                            <label for="prediction_type" class="form-label fw-semibold">Prediction Type</label>
+                            <label for="serial_no" class="form-label fw-semibold">Patient</label>
                             <select class="form-select rounded-3" id="serial_no" name="serial_no" required>
-                                <option value="" disabled selected>-- Select Prediction Type --</option>
+                                <option value="" disabled selected>-- Select Patient --</option>
                                 {% for pat in patient %}
-                                <option value="{{ pat.serial_no }}">{{ pat.first_name }} {{ pat.last_name }}---({{ pat.serial_no }} )</option>
+                                <option value="{{ pat.serial_no }}">{{ pat.first_name }} {{ pat.last_name }} ({{ pat.serial_no }})</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -28,9 +30,9 @@
                             <label for="prediction_type" class="form-label fw-semibold">Prediction Type</label>
                             <select class="form-select rounded-3" id="prediction_type" name="prediction_type" required>
                                 <option value="" disabled selected>-- Select Prediction Type --</option>
-                                <option value="lab">Lab Stage Predictions</option>
-                                <option value="ecg">ECG Readings Based Predictions</option>
-                                <option value="chest">Chest Scan Predictions</option>
+                                <option value="lab">Lab Results Prediction</option>
+                                <option value="ecg">ECG Analysis</option>
+                                <option value="chest">Chest Scan Analysis</option>
                             </select>
                         </div>
                         <div class="d-flex justify-content-between">
@@ -38,6 +40,7 @@
                             <button type="submit" class="btn btn-primary rounded-3">Predict</button>
                         </div>
                     </form>
+
                 </div>
             </div>
         </div>
@@ -70,7 +73,8 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify({
                     serial_no: serialNo,
@@ -79,8 +83,24 @@
             });
     
             if (response.ok) {
-                console.log(response)
-                window.location.href = "{% url 'report-reports' %}";
+                // collect dat
+                const data = await response.json(); 
+                console.log(data);
+
+                // Store in localStorage instead of sessionStorage
+                localStorage.setItem('predictionData', JSON.stringify(data.context));
+                
+                // Add timestamp to handle data freshness
+                localStorage.setItem('predictionTimestamp', Date.now());
+                console.log(localStorage.getItem('predictionData'));
+                // document.open();
+                // document.write(data);
+                // document.close();
+                console.log(data.redirect_url)
+
+                // console.log(response.template_name)
+
+                window.location.href = data.redirect_url;
             } else {
                 console.log(response)
                 const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));

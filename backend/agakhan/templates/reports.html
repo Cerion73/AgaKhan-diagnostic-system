@@ -3,148 +3,282 @@
 
 {% block head %}
 <!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
-
-<style>
-    .report-card {
-        background: white;
-        border-radius: 10px;
-        padding: 2rem;
-        margin: 2rem auto;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
-        position: relative;
-    }
-
-    .patient-sidebar {
-        border-left: 1px solid #dee2e6;
-        padding-left: 1.5rem;
-    }
-
-    .data-freshness {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        font-size: 0.8rem;
-        color: #6c757d;
-    }
-
-    [data-bs-toggle="tooltip"] {
-        border-bottom: 1px dashed #666;
-        cursor: help;
-    }
-</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <nav class="nav nav-pills justify-content-between mb-4" aria-label="Main navigation">
-        <!-- Navigation items same as before -->
-    </nav>
-
-    <div class="data-freshness" aria-label="Data freshness">
-        <i class="bi bi-clock-history"></i> Updated: {% now "DATETIME_FORMAT" %}
+<div class="container report-container">
+    <!-- Header Section -->
+    <div class="report-header mb-5">
+        <h2 class="mb-3">Comprehensive Patient Report</h2>
+        <button onclick="generatePDF()" class="btn btn-primary">
+            <i class="bi bi-download"></i> Download PDF
+        </button>
     </div>
 
-    <div class="report-card">
+    <i>{{ pred }}</i>
+
+    <!-- Replace patient summary section -->
+<div class="patient-summary card mb-4">
+    <div class="card-body">
+        <h1 class="card-title" style="font-weight: bolder;">
+            Name: <span id="patientName"></span>
+        </h1>
         <div class="row">
-            <!-- Main Content -->
-            <div class="col-lg-8">
-                <!-- Visualizations -->
-                <div class="mb-5" role="region" aria-labelledby="riskTrendsHeading">
-                    <h4 id="riskTrendsHeading" class="mb-3">Risk Trends Over Time</h4>
-                    <canvas id="trendChart" 
-                            aria-label="Line chart showing risk trend over past 6 months"
-                            role="img"></canvas>
-                </div>
-
-                <!-- Comparative Data -->
-                <section aria-labelledby="comparativeDataHeading">
-                    <h4 id="comparativeDataHeading" class="mb-3">Comparative Analysis</h4>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <canvas id="populationComparison" 
-                                    aria-label="Bar chart comparing patient metrics to population averages"
-                                    role="img"></canvas>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="alert alert-info" role="alert">
-                                <i class="bi bi-info-circle"></i>
-                                <span data-bs-toggle="tooltip" 
-                                      data-bs-placement="top"
-                                      title="Compared to similar demographic group">
-                                    Population Percentile: 85th
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+            <div class="col-md-4">
+                <p class="mb-1" style="font-weight: bolder;">
+                    Age: <span id="patientAge"></span>
+                </p>
+                <p class="mb-1" style="font-weight: bolder;">
+                    Gender: <span id="patientGender"></span>
+                </p>
             </div>
-
-            {{ pred.predicted_name }}
-            {{ pred.classes_probabilities }}
-
-            <!-- Patient Sidebar -->
-            <div class="col-lg-4 patient-sidebar">
-                <div class="sticky-top">
-                    <h5 class="mb-3">Patient Summary</h5>
-                    <dl class="row">
-                        <dt class="col-sm-5">Last ECG</dt>
-                        <dd class="col-sm-7">2024-03-15</dd>
-                        
-                        <dt class="col-sm-5" data-bs-toggle="tooltip" 
-                            title="Low-density Lipoprotein Cholesterol">
-                            LDL Level
-                        </dt>
-                        <dd class="col-sm-7">189 mg/dL</dd>
-                    </dl>
-
-                    <div class="mt-4">
-                        <h6>Historical Comparisons</h6>
-                        <canvas id="miniTrend" 
-                                aria-label="Mini trend chart of key metrics"
-                                role="img"></canvas>
-                    </div>
-                </div>
+            <div class="col-md-4">
+                <p class="mb-1" id="latestECGDate"></p>
+                <p class="mb-1" id="latestLabDate"></p>
+            </div>
+            <div class="col-md-4">
+                <p class="mb-1" id="patientId"></p>
             </div>
         </div>
+    </div>
+</div>
 
-        <!-- PDF Generation -->
-        <button class="btn btn-primary download-btn"
-                aria-label="Download PDF report"
-                onclick="generatePDF()">
-            <i class="bi bi-file-earmark-arrow-down"></i> Download PDF
-        </button>
+<!-- Update key statistics section -->
+<div class="col-lg-4">
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Key Statistics</h5>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>Total Predictions</span>
+                    <span id="totalPredictions">0</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>Average Confidence</span>
+                    <span id="averageConfidence">0%</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>High Risk Predictions</span>
+                    <span id="highRiskCount">0</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+    <!-- Predictions History -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Prediction History</h5>
+            {% if predictions %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Prediction</th>
+                            <th>Confidence</th>
+                            <th>Risk Level</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prediction in predictions %}
+                        <tr>
+                            <td>{{ prediction.date|date:"Y-m-d" }}</td>
+                            <td>{{ prediction.get_prediction_type_display }}</td>
+                            <td>{{ prediction.predicted_name }}</td>
+                            <td>{{ prediction.confidence_score|floatformat:1 }}%</td>
+                            <td>
+                                <span class="badge {% if prediction.risk_class %}bg-danger{% else %}bg-success{% endif %}">
+                                    {% if prediction.risk_class %}High Risk{% else %}Low Risk{% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">No prediction history available</div>
+            {% endif %}
+        </div>
+
+        <!-- Prediction Results -->
+        <div class="prediction-results mt-5">
+            <h4 class="mb-3">Prediction Results</h4>
+            {% for prediction in predictions %}
+            <i>-----{{ prediction }}------</i>
+            <div class="card result-card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ prediction.predicted_name }}</h5>
+                    <p class="card-text">Confidence: {{ prediction.confidence_score }}%</p>
+                    <p class="text-muted small">Predicted on {{ prediction.date|date:"M d, Y H:i" }}</p>
+                    <a href="{% url 'report-reports' %}?patient_id={{ pred.patient.serial_no }}" 
+                       class="btn btn-success">
+                        View Full Report
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
     </div>
 </div>
 
 <script>
-    // Initialize Charts
-    const trendCtx = document.getElementById('trendChart').getContext('2d');
-    new Chart(trendCtx, {
-        type: 'line',
-        data: {/* ... */},
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                tooltip: {
-                    mode: 'nearest',
-                    intersect: false
-                }
+   
+    document.addEventListener('DOMContentLoaded', function() {
+        const storedData = localStorage.getItem('predictionData');
+        const storedTime = localStorage.getItem('predictionTimestamp');
+        const isFreshData = storedData && storedTime && (Date.now() - storedTime < 300000);
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientId = urlParams.get('patient_id');
+
+        if (isFreshData) {
+            try {
+                const data = JSON.parse(storedData);
+                populateFromStorage(data);
+                initializeCharts(data);
+                localStorage.removeItem('predictionData');
+                localStorage.removeItem('predictionTimestamp');
+            } catch (error) {
+                console.error('Data parsing error:', error);
+                redirectToPredict();
             }
+        } else if (!patientId) {
+            redirectToPredict();
+        }
+
+        function populateFromStorage(data) {
+            // Patient Summary
+            document.getElementById('patientName').textContent = 
+                `${data.patient.first_name} ${data.patient.last_name}`;
+            document.getElementById('patientAge').textContent = data.age;
+            document.getElementById('patientGender').textContent = data.patient.gender;
+            document.getElementById('latestECGDate').innerHTML = 
+                `<strong>Last ECG:</strong> ${data.latest_ecg_date}`;
+            document.getElementById('latestLabDate').innerHTML = 
+                `<strong>Last Lab:</strong> ${data.latest_lab_date}`;
+            document.getElementById('patientId').innerHTML = 
+                `<strong>Patient ID:</strong> ${data.patient.serial_no}`;
+            
+            // Key Statistics
+            document.getElementById('totalPredictions').textContent = data.predictions.length;
+            document.getElementById('averageConfidence').textContent = 
+                `${parseFloat(data.avg_confidence).toFixed(1)}%`;
+            document.getElementById('highRiskCount').textContent = data.high_risk_count;
+        }
+
+        function initializeCharts(data) {
+            // Confidence Chart
+            const confDates = data.predictions.map(p => 
+                new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            );
+            const confScores = data.predictions.map(p => p.confidence_score);
+            
+            new Chart(document.getElementById('confidenceChart'), {
+                type: 'line',
+                data: {
+                    labels: confDates,
+                    datasets: [{
+                        label: 'Confidence Score',
+                        data: confScores,
+                        borderColor: '#4673df',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // Type Distribution Chart
+            new Chart(document.getElementById('typeChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Lab Analysis', 'ECG Scan', 'Chest Scan'],
+                    datasets: [{
+                        data: [data.lab_count, data.ecg_count, data.chest_count],
+                        backgroundColor: ['#4673df', '#1cc88a', '#36b9cc'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        function redirectToPredict() {
+            localStorage.removeItem('predictionData');
+            localStorage.removeItem('predictionTimestamp');
+            window.location.href = '/predict/';
         }
     });
-
-    // Initialize tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(t => new bootstrap.Tooltip(t));
-
-    // PDF Generation Handler
-    function generatePDF() {
-        // Implement PDF service integration
-        window.print(); // Temporary fallback
-    }
     
+    // PDF Generation
+    function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'a4');
+        const content = document.querySelector('.report-container');
+
+        // Wait a short while to ensure charts finish rendering
+        setTimeout(() => {
+            doc.html(content, {
+                callback: function(doc) {
+                    doc.save('patient-report-{{ patient.serial_no }}.pdf');
+                },
+                margin: [20, 20, 20, 20],
+                autoPaging: 'text',
+                width: 595,
+                windowWidth: content.scrollWidth,
+                html2canvas: {
+                    scale: 0.7,
+                    useCORS: true
+                }
+            });
+        }, 500);
+    }
 </script>
+
+<style>
+.report-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+}
+
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #e3e6f0;
+    padding-bottom: 1rem;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.result-card {
+    border-left: 4px solid #4e73df;
+}
+
+canvas {
+    max-width: 100%;
+    margin: 0 auto;
+    display: block;
+}
+</style>
 {% endblock %}
