@@ -14,12 +14,12 @@
     <!-- Header Section -->
     <div class="report-header mb-5">
         <h2 class="mb-3">Comprehensive Patient Report</h2>
-        <button onclick="generatePDF()" class="btn btn-primary">
+        <button class="btn btn-primary" id="generate-pdf">
             <i class="bi bi-download"></i> Download PDF
         </button>
     </div>
 
-
+<div id="report-content">
     <!-- Replace patient summary section -->
 <div class="patient-summary card mb-4">
     <div class="card-body">
@@ -140,69 +140,69 @@
         </div>
     </div>
 </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+
+<script>
+  document.getElementById('generate-pdf').addEventListener('click', () => {
+    const element = document.getElementById('report-content');
+    html2pdf().from(element).save('report.pdf');
+  });
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 
-    var ecg = parseFloat("{{avg_score_ecg}}");
-    var x_ray = parseFloat("{{avg_score_x_ray}}");
-    var lab = parseFloat("{{avg_score_lab}}");
+    var ecg = parseFloat("{{avg_score_ecg}}") || 0;
+    var x_ray = parseFloat("{{avg_score_x_ray}}") || 0;
+    var lab = parseFloat("{{avg_score_lab}}") || 0;
 
     console.log(`---------------${ecg}`);
 
-
-
     const chart_x = document.getElementById('myChart');
+    const count = document.getElementById('mypie');
 
-    new Chart(chart_x, {
-        type: 'bar',
-        data: {
-        labels: ['ECG', 'X-RAY', 'LAB'],
-        datasets: [{
-            label: 'Average confidence Score',
-            data: [ecg, x_ray, lab],
-            borderWidth: 1
-        }]
-        },
-        options: {
-        scales: {
-            y: {
-            beginAtZero: true
+    console.log(chart_x, count); // Check that both exist
+
+    if (chart_x) {
+        new Chart(chart_x, {
+            type: 'bar',
+            data: {
+                labels: ['ECG', 'X-RAY', 'LAB'],
+                datasets: [{
+                    label: 'Average confidence Score',
+                    data: [ecg, x_ray, lab],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: { y: { beginAtZero: true } }
             }
-        }
-        }
-    });
+        });
+    }
 
+    if (count) {
+        new Chart(count, {
+            type: 'bar',
+            data: {
+                labels: ['ECG', 'X-RAY', 'LAB'],
+                datasets: [{
+                    label: 'Average confidence Score',
+                    data: [ecg, x_ray, lab],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
     // Group predictions by type
     const groupedData = {
         lab: predictions.filter(p => p.type === 'lab'),
         ecg: predictions.filter(p => p.type === 'ecg'),
         chest: predictions.filter(p => p.type === 'chest')
     };
-    // const ecg = parseFloat("{{avg_score_ecg}}");
-    // const x_ray = parseFloat("{{avg_score_x_ray}}");
-    // const lab = parseFloat("{{avg_score_lab}}");
-
-    console.log(`---------------${ecg}`);
-    const count = document.getElementById('mypie');
-
-    new Chart(count, {
-        type: 'bar',
-        data: {
-        labels: ['ECG', 'X-RAY', 'LAB'],
-        datasets: [{
-            label: 'Average confidence Score',
-            data: [ecg, x_ray, lab],
-            borderWidth: 1
-        }]
-        },
-        options: {
-        scales: {
-            y: {
-            beginAtZero: true
-            }
-        }
-        }
-    });
+    
 
 
    
