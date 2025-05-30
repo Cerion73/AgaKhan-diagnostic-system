@@ -466,7 +466,7 @@ class LabResultsViewSet(ModelViewSet):
             class_name = 'No' if pred_class == 0 else 'Yes'
             conf_score = np.round(probability if pred_class == 1 else 1 - probability, 4)
 
-            pred = Prediction.objects.create(patient=patient, prediction_type='lab', confidence_score= conf_score, predicted_class = pred_class, predicted_name=class_name, classes_probabilities=f'[{probability}, {1 - probability}]', risk_class=float(pred_class), disease_class=pred_class, date=timezone.now())
+            pred = Prediction.objects.create(patient=patient, prediction_type='lab', confidence_score= conf_score*100, predicted_class = pred_class, predicted_name=class_name, classes_probabilities=f'[{probability*100}, {(1 - probability)*100}]', risk_class=float(pred_class), disease_class=pred_class, date=timezone.now())
             print(pred.predicted_name)
 
             predictions = Prediction.objects.filter(patient=patient).order_by('-date')
@@ -475,9 +475,15 @@ class LabResultsViewSet(ModelViewSet):
             last_ecg = ECG.objects.filter(patient=patient).order_by('-date').first()
             last_lab = LabResults.objects.filter(patient=patient).order_by('-date').first()
             last_chest = MedicalScan.objects.filter(patient=patient).order_by('-date').first()
-
+            # Calculate age
+            today = date.today()
+            age = today.year - patient.dob.year - (
+                (today.month, today.day) < (patient.dob.month, patient.dob.day))
             
-
+                        
+            # Get latest dates
+            latest_ecg = predictions.filter(prediction_type='ecg').first()
+            latest_lab = predictions.filter(prediction_type='lab').first()
             
             context = {
                 'patient': PatientSerializer(patient).data,
@@ -489,13 +495,18 @@ class LabResultsViewSet(ModelViewSet):
                 'chest_count': predictions.filter(prediction_type='chest').count(),
                 'avg_confidence': predictions.aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0,
                 'high_risk_count': predictions.filter(risk_class=True).count(),
-            }
+                'latest_ecg_date': last_ecg.date if last_ecg else "N/A",
+                'latest_lab_date': last_lab.date if last_lab else "N/A",
+                }
 
             # Return JSON with redirect info for API calls
             if request.accepted_renderer.format == 'json':
                 context['patient_id'] = patient.serial_no
                 return Response({
-                    'redirect_url': reverse('report-reports') + f'?patient_id={patient.serial_no}',
+                    'redirect_url': (
+                        reverse('report-reports')
+                        + f'?patient_id={patient.serial_no}'
+                    ),
                     'context': context
                 }, status=status.HTTP_201_CREATED)
             
@@ -529,67 +540,94 @@ class ECGViewSet(ModelViewSet):
             print(patient)     
             return Response({'patient': patient}, status=status.HTTP_200_OK, template_name='ecg.html')
         
-    @action(methods=['get', 'post'], detail=False, url_name='predict', url_path='predict.html', renderer_classes = [TemplateHTMLRenderer])
+    @action(methods=['get', 'post'], detail=False, url_name='predict', url_path='predict.html', renderer_classes = [TemplateHTMLRenderer, JSONRenderer])
     def predict(self, request):
         model_path = os.path.join(settings.BASE_DIR, 'models', 'cnn_ecg_deep.keras')
         ecg_model = tf.keras.models.load_model(model_path) #import the ecg model
         if request.method == 'POST':
+            print('..................................hhhhhhhh....................')
             serializer = PredTypeSerializer(data= request.data)
 
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='predict.html')
             
-            patient = serializer.save()
-            scan_done = serializer.validated_data['pred_type']
+            # patient = serializer.save()
+            # scan_done = serializer.validated_data['pred_type']
             patient = serializer.validated_data['serial_no']
+            patient = get_object_or_404(Patient, serial_no=patient)
             content_scan = get_object_or_404(ECG, patient=patient)
-            if scan_done == 'ecg':
-                # Step 1: Extract the path from the URL
-                url = content_scan.scan_hea
-                print(url)
 
-                # Step 2: Get the filename (with extension)
-                filename_with_ext = os.path.basename(str(url))  # "00001_lr.hea"
+            # Step 1: Extract the path from the URL
+            url = content_scan.scan_hea
+            print(url)
 
-                # Step 3: Get the filename without extension (needed by wfdb)
-                file_id = os.path.splitext(filename_with_ext)[0]  # "00001_lr"
+            # Step 2: Get the filename (with extension)
+            filename_with_ext = os.path.basename(str(url))  # "00001_lr.hea"
 
-                # Step 4: Construct local path (assuming you store data locally)
-                local_path = os.path.join('data/scans/ecg', file_id)
-                print(local_path)
+            # Step 3: Get the filename without extension (needed by wfdb)
+            file_id = os.path.splitext(filename_with_ext)[0]  # "00001_lr"
 
-                print(local_path)
-                sig, attr = wfdb.rdsamp(local_path)
-                prediction_probablities = ecg_model.predict(np.expand_dims(sig, axis=0))[0]
-                prediction_class = np.argmax(prediction_probablities)
-                ecg_cols = ['HYP', 'NORM', 'CD', 'MI', 'STTC', 'NN']
-                predicted_class = np.argmax(ecg_model.predict(np.expand_dims(sig, axis=0)))
-                print(f'The patient has disease belonging the class {ecg_cols[predicted_class]}')
-                np.set_printoptions(suppress=True) 
-                probs = np.round(prediction_probablities, 4) * 100
-                print(np.round(prediction_probablities, 4) * 100)
-                
-                conf_score = round(prediction_probablities[predicted_class] * 100, 4)
-                class_name = ecg_cols[predicted_class]
-                risk_class = 0 if class_name == 'NORM' else 1
-                dis_diag = predicted_class
-                pred = Prediction.objects.create(patient=patient, confidence_score=conf_score, predicted_class=predicted_class, predicted_name=class_name, classes_probabilities=probs.tolist(), risk_class=risk_class, disease_class=dis_diag)
+            # Step 4: Construct local path (assuming you store data locally)
+            local_path = os.path.join('data/scans/ecg', file_id)
+            print(local_path)
+
+            print(local_path)
+            sig, attr = wfdb.rdsamp(local_path)
+            prediction_probablities = ecg_model.predict(np.expand_dims(sig, axis=0))[0]
+            prediction_class = np.argmax(prediction_probablities)
+            ecg_cols = ['HYP', 'NORM', 'CD', 'MI', 'STTC', 'NN']
+            predicted_class = np.argmax(ecg_model.predict(np.expand_dims(sig, axis=0)))
+            print(f'The patient has disease belonging the class {ecg_cols[predicted_class]}')
+            np.set_printoptions(suppress=True) 
+            probs = np.round(prediction_probablities, 4) * 100
+            print(np.round(prediction_probablities, 4) * 100)
+            
+            conf_score = round(prediction_probablities[predicted_class] * 100, 4)
+            class_name = ecg_cols[predicted_class]
+            risk_class = 0 if class_name == 'NORM' else 1
+            dis_diag = predicted_class
+            pred = Prediction.objects.create(patient=patient, confidence_score=conf_score, predicted_class=predicted_class, predicted_name=class_name, classes_probabilities=probs.tolist(), risk_class=risk_class, disease_class=dis_diag)
 
             predictions = Prediction.objects.filter(patient=patient).order_by('-date')
-            print(predictions[0])
-
+            
+            # get the last visit or predictions made in the last visit
+            last_ecg = ECG.objects.filter(patient=patient).order_by('-date').first()
+            last_lab = LabResults.objects.filter(patient=patient).order_by('-date').first()
+            last_chest = MedicalScan.objects.filter(patient=patient).order_by('-date').first()
+            # Calculate age
+            today = date.today()
+            age = today.year - patient.dob.year - (
+                (today.month, today.day) < (patient.dob.month, patient.dob.day))
+            
+                        
+            # Get latest dates
+            latest_ecg = predictions.filter(prediction_type='ecg').first()
+            latest_lab = predictions.filter(prediction_type='lab').first()
+            
             context = {
-                'patient': patient,
-                'pred': pred,
-                'predictions': list(predictions),
+                'patient': PatientSerializer(patient).data,
+                'pred': PredictionSerializer(pred).data,
+                'predictions': PredictionSerializer(predictions, many=True).data,
+                'age': age,
                 'lab_count': predictions.filter(prediction_type='lab').count(),
                 'ecg_count': predictions.filter(prediction_type='ecg').count(),
                 'chest_count': predictions.filter(prediction_type='chest').count(),
                 'avg_confidence': predictions.aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0,
                 'high_risk_count': predictions.filter(risk_class=True).count(),
-            }
+                'latest_ecg_date': last_ecg.date if last_ecg else "N/A",
+                'latest_lab_date': last_lab.date if last_lab else "N/A",
+                }
 
-            return Response(context, status=status.HTTP_201_CREATED, template_name='reports.html')      
+            # Return JSON with redirect info for API calls
+            if request.accepted_renderer.format == 'json':
+                context['patient_id'] = patient.serial_no
+                return Response({
+                    'redirect_url': (
+                        reverse('report-reports')
+                        + f'?patient_id={patient.serial_no}'
+                    ),
+                    'context': context
+                }, status=status.HTTP_201_CREATED)      
         if request.method == 'GET':
             patient = Patient.objects.all()
             # patient = request.data
@@ -617,7 +655,7 @@ class MedicalScanViewSet(ModelViewSet):
             patient = request.data
             return Response({'patient': patient, 'next_step': 'scan-predict', 'next_name': 'Predict Diagnosis', 'message': 'Chest X-ray recorded successfully.'}, status=status.HTTP_200_OK, template_name='medical_scan.html')
         
-    @action(methods=['get', 'post'], detail=False, url_name='predict', url_path='predict.html', renderer_classes = [TemplateHTMLRenderer])
+    @action(methods=['get', 'post'], detail=False, url_name='predict', url_path='predict.html', renderer_classes = [TemplateHTMLRenderer, JSONRenderer])
     def predict(self, request):
         model_path = os.path.join(settings.BASE_DIR, 'models', 'best_model_8.keras')
         chest_model = tf.keras.models.load_model(model_path) # load chest model
@@ -627,61 +665,86 @@ class MedicalScanViewSet(ModelViewSet):
             if not serializer.is_valid():
                 return Response({'errors': serializer._errors}, status=status.HTTP_304_NOT_MODIFIED, template_name='predict.html')
             
-            patient = serializer.save()
 
-            scan_done = serializer.validated_data['pred_type']
             patient = serializer.validated_data['serial_no']
+            patient = get_object_or_404(Patient, serial_no=patient)
             content_scan = MedicalScan.objects.filter(patient=patient).order_by('-date').first()
             print(content_scan)
-            if scan_done == 'chest':
-                # Step 1: Extract the path from the URL
-                url = content_scan.scan_content
-                url = os.path.join(settings.BASE_DIR, str(url))
-                print(url)
+            # Step 1: Extract the path from the URL
+            url = content_scan.scan_content
+            url = os.path.join(settings.BASE_DIR, str(url))
+            print(url)
 
-                print(url)
-                image = cv2.imread((url))
-                if image is None:
-                    return None
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                image = cv2.resize(image, (224, 224))
-                image = image / 255.0
-                print(image.shape)
+            print(url)
+            image = cv2.imread((url))
+            if image is None:
+                return None
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image = cv2.resize(image, (224, 224))
+            image = image / 255.0
+            print(image.shape)
 
-                prediction_probablities = chest_model.predict(np.expand_dims(image, axis=0))[0]
-                prediction_class = np.argmax(prediction_probablities)
-                final_classes = ['Atelectasis', 'Cardiomegaly', 'Consolidation',
-                 'Edema', 'Effusion', 'Emphysema', 'Fibrosis', 'Hernia',
-                 'Infiltration', 'Mass', 'No Finding', 'Nodule',
-                 'Pleural_Thickening', 'Pneumonia', 'Pneumothorax']
-                # index = prediction_probablities.get_index(prediction_class)
-                class_name = final_classes[prediction_class]
-                risk_class = 0 if class_name == 'No Finding' else 1
-                dis_diag = prediction_class
-                conf_score = round(prediction_probablities[prediction_class] * 100, 4)
-                print(class_name)
-                print(conf_score)
-                np.set_printoptions(suppress=True) 
-                probs = np.round(prediction_probablities * 100, 2)
-                print(probs )
-                print()
+            prediction_probablities = chest_model.predict(np.expand_dims(image, axis=0))[0]
+            prediction_class = np.argmax(prediction_probablities)
+            final_classes = ['Atelectasis', 'Cardiomegaly', 'Consolidation',
+                'Edema', 'Effusion', 'Emphysema', 'Fibrosis', 'Hernia',
+                'Infiltration', 'Mass', 'No Finding', 'Nodule',
+                'Pleural_Thickening', 'Pneumonia', 'Pneumothorax']
+            # index = prediction_probablities.get_index(prediction_class)
+            class_name = final_classes[prediction_class]
+            risk_class = 0 if class_name == 'No Finding' else 1
+            dis_diag = prediction_class
+            conf_score = round(prediction_probablities[prediction_class] * 100, 4)
+            print(class_name)
+            print(conf_score)
+            np.set_printoptions(suppress=True) 
+            probs = np.round(prediction_probablities * 100, 2)
+            print(probs )
+            print()
 
-                pred = Prediction.objects.create(patient=patient, confidence_score=conf_score, predicted_class=prediction_class, predicted_name=class_name, classes_probabilities=probs, risk_class=risk_class, disease_class=dis_diag)
+            pred = Prediction.objects.create(patient=patient, confidence_score=conf_score, predicted_class=prediction_class, predicted_name=class_name, classes_probabilities=probs, risk_class=risk_class, disease_class=dis_diag, prediction_type='x_ray')
+
+
             predictions = Prediction.objects.filter(patient=patient).order_by('-date')
-            print(predictions[0])
-
+            
+            # get the last visit or predictions made in the last visit
+            last_ecg = ECG.objects.filter(patient=patient).order_by('-date').first()
+            last_lab = LabResults.objects.filter(patient=patient).order_by('-date').first()
+            last_chest = MedicalScan.objects.filter(patient=patient).order_by('-date').first()
+            # Calculate age
+            today = date.today()
+            age = today.year - patient.dob.year - (
+                (today.month, today.day) < (patient.dob.month, patient.dob.day))
+            
+                        
+            # Get latest dates
+            latest_ecg = predictions.filter(prediction_type='ecg').first()
+            latest_lab = predictions.filter(prediction_type='lab').first()
+            
             context = {
-                'patient': patient,
-                'pred': [pred],
-                'predictions': list(predictions),
+                'patient': PatientSerializer(patient).data,
+                'pred': PredictionSerializer(pred).data,
+                'predictions': PredictionSerializer(predictions, many=True).data,
+                'age': age,
                 'lab_count': predictions.filter(prediction_type='lab').count(),
                 'ecg_count': predictions.filter(prediction_type='ecg').count(),
                 'chest_count': predictions.filter(prediction_type='chest').count(),
                 'avg_confidence': predictions.aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0,
                 'high_risk_count': predictions.filter(risk_class=True).count(),
-            }
+                'latest_ecg_date': last_ecg.date if last_ecg else "N/A",
+                'latest_lab_date': last_lab.date if last_lab else "N/A",
+                }
 
-            return Response(context, status=status.HTTP_201_CREATED, template_name='reports.html')      
+            # Return JSON with redirect info for API calls
+            if request.accepted_renderer.format == 'json':
+                context['patient_id'] = patient.serial_no
+                return Response({
+                    'redirect_url': (
+                        reverse('report-reports')
+                        + f'?patient_id={patient.serial_no}'
+                    ),
+                    'context': context
+                }, status=status.HTTP_201_CREATED)      
         if request.method == 'GET':
             patient = request.session.get('patient')
             # patient = request.data
@@ -734,11 +797,19 @@ class ReportViewSet(ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = ReportSerializer
 
+    # @action(methods=['get', 'post'], detail=False, url_name='reports', url_path='reports.html', renderer_classes = [TemplateHTMLRenderer])
+    # def reports(self, request):
+    #     if request.method == 'GET':
+    #         patient_id = request.query_params.get('patient_id')
+    #         return Response({'patient': patient_id}, status=status.HTTP_200_OK, template_name='reports.html')
+    #     return Response(status=status.HTTP_200_OK, template_name='reports.html')
+
     @action(methods=['get'], detail=False, 
-            url_name='reports', url_path='', 
+            url_name='reports', url_path='reports.html', 
             renderer_classes=[TemplateHTMLRenderer])
     def reports(self, request):
         patient_id = request.query_params.get('patient_id')
+        print(patient_id)
         if not patient_id:
             return Response({"error": "Patient ID is required"}, 
                            status=status.HTTP_400_BAD_REQUEST,
@@ -762,20 +833,27 @@ class ReportViewSet(ModelViewSet):
         # Get latest dates
         latest_ecg = predictions.filter(prediction_type='ecg').first()
         latest_lab = predictions.filter(prediction_type='lab').first()
+
+        avg_conf_ecg = predictions.filter(prediction_type='ecg').aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0
+        avg_conf_lab = predictions.filter(prediction_type='lab').aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0
+        avg_conf_x_ray = predictions.filter(prediction_type='x_ray').aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0
         
         context = {
             'patient': PatientSerializer(patient).data,
-            'predictions': PredictionSerializer(predictions, many=True).data,
+            'predictions': predictions,
             'age': age,
             'lab_count': predictions.filter(prediction_type='lab').count(),
             'ecg_count': predictions.filter(prediction_type='ecg').count(),
             'chest_count': predictions.filter(prediction_type='chest').count(),
-            'avg_confidence': predictions.aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0,
+            'avg_confidence': (predictions.aggregate(Avg('confidence_score'))['confidence_score__avg'] or 0),
             'high_risk_count': predictions.filter(risk_class=True).count(),
             'latest_ecg_date': latest_ecg.date if latest_ecg else "N/A",
             'latest_lab_date': latest_lab.date if latest_lab else "N/A",
+            'avg_score_ecg':avg_conf_ecg,
+            'avg_score_x_ray':avg_conf_x_ray,
+            'avg_score_lab':avg_conf_lab
         }
         
-        return Response(context, template_name='report.html')
+        return Response(context, template_name='reports.html')
 
 

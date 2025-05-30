@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 {% endblock %}
 
+
 {% block content %}
 <div class="container report-container">
     <!-- Header Section -->
@@ -18,29 +19,34 @@
         </button>
     </div>
 
-    <i>{{ pred }}</i>
 
     <!-- Replace patient summary section -->
 <div class="patient-summary card mb-4">
     <div class="card-body">
-        <h1 class="card-title" style="font-weight: bolder;">
-            Name: <span id="patientName"></span>
-        </h1>
+        <p class="card-title" style="font-weight: bolder;">
+            Name: <span id="patientName">{{ patient.first_name }} {{patient.last_name}}</span>
+        </p>
         <div class="row">
             <div class="col-md-4">
                 <p class="mb-1" style="font-weight: bolder;">
-                    Age: <span id="patientAge"></span>
+                    Age: <span id="patientAge">{{age}}</span>
                 </p>
                 <p class="mb-1" style="font-weight: bolder;">
-                    Gender: <span id="patientGender"></span>
+                    Gender: 
+                    {% if patient.gender == 'M' %}
+                    <span id="patientGender">Male</span>
+                    {% else %}
+                    <span id="patientGender">Female</span>
+                    {% endif %}
+
                 </p>
             </div>
             <div class="col-md-4">
-                <p class="mb-1" id="latestECGDate"></p>
-                <p class="mb-1" id="latestLabDate"></p>
+                <p class="mb-1" id="latestECGDate">Latest Ecg Date: {{ latest_ecg_date}}</p>
+                <p class="mb-1" id="latestLabDate">Latest Lab Date: {{latest_lab_date}}</p>
             </div>
             <div class="col-md-4">
-                <p class="mb-1" id="patientId"></p>
+                <p class="mb-1" id="patientId">Serial No: {{patient.serial_no}}</p>
             </div>
         </div>
     </div>
@@ -54,15 +60,15 @@
             <ul class="list-group list-group-flush">
                 <li class="list-group-item d-flex justify-content-between">
                     <span>Total Predictions</span>
-                    <span id="totalPredictions">0</span>
+                    <span id="totalPredictions">{{totalPredictions}}</span>
                 </li>
                 <li class="list-group-item d-flex justify-content-between">
                     <span>Average Confidence</span>
-                    <span id="averageConfidence">0%</span>
+                    <span id="averageConfidence">{{avg_confidence}}</span>
                 </li>
                 <li class="list-group-item d-flex justify-content-between">
                     <span>High Risk Predictions</span>
-                    <span id="highRiskCount">0</span>
+                    <span id="highRiskCount">{{high_risk_count}}</span>
                 </li>
             </ul>
         </div>
@@ -88,8 +94,8 @@
                     <tbody>
                         {% for prediction in predictions %}
                         <tr>
-                            <td>{{ prediction.date|date:"Y-m-d" }}</td>
-                            <td>{{ prediction.get_prediction_type_display }}</td>
+                            <td>{{ prediction.date }}</td>
+                            <td>{{ prediction.prediction_type }}</td>
                             <td>{{ prediction.predicted_name }}</td>
                             <td>{{ prediction.confidence_score|floatformat:1 }}%</td>
                             <td>
@@ -107,16 +113,23 @@
             {% endif %}
         </div>
 
+        <div>
+            <canvas id="myChart"></canvas>
+        </div>
+        <div>
+            <canvas id="mypie"></canvas>
+        </div>
+        
         <!-- Prediction Results -->
         <div class="prediction-results mt-5">
             <h4 class="mb-3">Prediction Results</h4>
             {% for prediction in predictions %}
-            <i>-----{{ prediction }}------</i>
             <div class="card result-card">
                 <div class="card-body">
                     <h5 class="card-title">{{ prediction.predicted_name }}</h5>
                     <p class="card-text">Confidence: {{ prediction.confidence_score }}%</p>
-                    <p class="text-muted small">Predicted on {{ prediction.date|date:"M d, Y H:i" }}</p>
+                    <p class="text-muted small">Predicted on {{ prediction.date }}
+</p>
                     <a href="{% url 'report-reports' %}?patient_id={{ pred.patient.serial_no }}" 
                        class="btn btn-success">
                         View Full Report
@@ -127,15 +140,81 @@
         </div>
     </div>
 </div>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+
+    var ecg = parseFloat("{{avg_score_ecg}}");
+    var x_ray = parseFloat("{{avg_score_x_ray}}");
+    var lab = parseFloat("{{avg_score_lab}}");
+
+    console.log(`---------------${ecg}`);
+
+
+
+    const chart_x = document.getElementById('myChart');
+
+    new Chart(chart_x, {
+        type: 'bar',
+        data: {
+        labels: ['ECG', 'X-RAY', 'LAB'],
+        datasets: [{
+            label: 'Average confidence Score',
+            data: [ecg, x_ray, lab],
+            borderWidth: 1
+        }]
+        },
+        options: {
+        scales: {
+            y: {
+            beginAtZero: true
+            }
+        }
+        }
+    });
+
+    // Group predictions by type
+    const groupedData = {
+        lab: predictions.filter(p => p.type === 'lab'),
+        ecg: predictions.filter(p => p.type === 'ecg'),
+        chest: predictions.filter(p => p.type === 'chest')
+    };
+    // const ecg = parseFloat("{{avg_score_ecg}}");
+    // const x_ray = parseFloat("{{avg_score_x_ray}}");
+    // const lab = parseFloat("{{avg_score_lab}}");
+
+    console.log(`---------------${ecg}`);
+    const count = document.getElementById('mypie');
+
+    new Chart(count, {
+        type: 'bar',
+        data: {
+        labels: ['ECG', 'X-RAY', 'LAB'],
+        datasets: [{
+            label: 'Average confidence Score',
+            data: [ecg, x_ray, lab],
+            borderWidth: 1
+        }]
+        },
+        options: {
+        scales: {
+            y: {
+            beginAtZero: true
+            }
+        }
+        }
+    });
+
+
    
     document.addEventListener('DOMContentLoaded', function() {
         const storedData = localStorage.getItem('predictionData');
         const storedTime = localStorage.getItem('predictionTimestamp');
-        const isFreshData = storedData && storedTime && (Date.now() - storedTime < 300000);
+        const isFreshData = storedData && storedTime && (Date.now() - storedTime < 700000);
         const urlParams = new URLSearchParams(window.location.search);
-        const patientId = urlParams.get('patient_id');
+        console.log(urlParams.get('patient_id'));
+        // const patientId = urlParams.get('patient_id');
+        const patientId = localStorage.getItem('patient').serial_no;
+        console.log(patientId)
 
         if (isFreshData) {
             try {
@@ -152,25 +231,6 @@
             redirectToPredict();
         }
 
-        function populateFromStorage(data) {
-            // Patient Summary
-            document.getElementById('patientName').textContent = 
-                `${data.patient.first_name} ${data.patient.last_name}`;
-            document.getElementById('patientAge').textContent = data.age;
-            document.getElementById('patientGender').textContent = data.patient.gender;
-            document.getElementById('latestECGDate').innerHTML = 
-                `<strong>Last ECG:</strong> ${data.latest_ecg_date}`;
-            document.getElementById('latestLabDate').innerHTML = 
-                `<strong>Last Lab:</strong> ${data.latest_lab_date}`;
-            document.getElementById('patientId').innerHTML = 
-                `<strong>Patient ID:</strong> ${data.patient.serial_no}`;
-            
-            // Key Statistics
-            document.getElementById('totalPredictions').textContent = data.predictions.length;
-            document.getElementById('averageConfidence').textContent = 
-                `${parseFloat(data.avg_confidence).toFixed(1)}%`;
-            document.getElementById('highRiskCount').textContent = data.high_risk_count;
-        }
 
         function initializeCharts(data) {
             // Confidence Chart
@@ -279,6 +339,9 @@ canvas {
     max-width: 100%;
     margin: 0 auto;
     display: block;
+}
+.mb-1{
+    font-weight: bolder;
 }
 </style>
 {% endblock %}

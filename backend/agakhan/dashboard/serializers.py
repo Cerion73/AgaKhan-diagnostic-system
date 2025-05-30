@@ -138,12 +138,4 @@ class ECGSerializer(serializers.ModelSerializer):
 class PredTypeSerializer(serializers.Serializer):
     serial_no = serializers.CharField()
     pred_type = serializers.CharField()
-
-    def validate(self, data):
-        try:
-            patient = Prediction.objects.filter(patient=data['serial_no']).first().patient.serial_no
-            data['serial_no'] = patient
-            return data
-        except CustomUser.DoesNotExist:
-            raise serializers.ValidationError("User with that serial number does not exist.")
     

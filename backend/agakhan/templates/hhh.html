@@ -1,0 +1,436 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block head %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+{% endblock %}
+
+
+{% block content %}
+<div class="container report-container">
+    <!-- Header Section -->
+    <div class="report-header mb-5">
+        <h2 class="mb-3">Comprehensive Patient Report</h2>
+        <button onclick="generatePDF()" class="btn btn-primary">
+            <i class="bi bi-download"></i> Download PDF
+        </button>
+    </div>
+
+    <!-- Patient Summary -->
+    <div class="patient-summary card mb-4">
+        <div class="card-body">
+            <h1 class="card-title" style="font-weight: bolder;">
+                Name: <span id="patientName">{{ patient.first_name }} {{patient.last_name}}</span>
+            </h1>
+            <div class="row">
+                <div class="col-md-4">
+                    <p class="mb-1" style="font-weight: bolder;">
+                        Age: <span id="patientAge">{{age}}</span>
+                    </p>
+                    <p class="mb-1" style="font-weight: bolder;">
+                        Gender: 
+                        {% if patient.gender == 'M' %}
+                        <span id="patientGender">Male</span>
+                        {% else %}
+                        <span id="patientGender">Female</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-4">
+                    <p class="mb-1" id="latestECGDate">Latest Ecg Date: {{ latest_ecg_date}}</p>
+                    <p class="mb-1" id="latestLabDate">Latest Lab Date: {{latest_lab_date}}</p>
+                </div>
+                <div class="col-md-4">
+                    <p class="mb-1" id="patientId">Serial No: {{patient.serial_no}}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- Charts Column -->
+        <div class="col-lg-8">
+            <!-- Confidence Trend Chart -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Overall Confidence Trend</h5>
+                    <canvas id="confidenceChart" style="min-height: 300px;"></canvas>
+                </div>
+            </div>
+
+            <!-- Prediction Types Distribution -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Prediction Types Distribution</h5>
+                    <canvas id="typeChart" style="min-height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats Sidebar -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Key Statistics</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Total Predictions</span>
+                            <span id="totalPredictions">{{ predictions|length }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Average Confidence</span>
+                            <span id="averageConfidence">{{ avg_confidence|floatformat:1 }}%</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>High Risk Predictions</span>
+                            <span id="highRiskCount">{{ high_risk_count }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Per-Type Confidence Trends -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <h4 class="mb-3">Confidence Trends by Prediction Type</h4>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Lab Confidence Trend</h5>
+                    <canvas id="labConfidenceChart" style="min-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">ECG Confidence Trend</h5>
+                    <canvas id="ecgConfidenceChart" style="min-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Chest Scan Confidence Trend</h5>
+                    <canvas id="chestConfidenceChart" style="min-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk Level Distribution -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <h4 class="mb-3">Risk Level Distribution</h4>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Lab Risk Levels</h5>
+                    <canvas id="labRiskChart" style="min-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">ECG Risk Levels</h5>
+                    <canvas id="ecgRiskChart" style="min-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Chest Scan Risk Levels</h5>
+                    <canvas id="chestRiskChart" style="min-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Predictions History -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Prediction History</h5>
+            {% if predictions %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Prediction</th>
+                            <th>Confidence</th>
+                            <th>Risk Level</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prediction in predictions %}
+                        <tr>
+                            <td>{{ prediction.date }}</td>
+                            <td>{{ prediction.prediction_type }}</td>
+                            <td>{{ prediction.predicted_name }}</td>
+                            <td>{{ prediction.confidence_score|floatformat:1 }}%</td>
+                            <td>
+                                <span class="badge {% if prediction.risk_class %}bg-danger{% else %}bg-success{% endif %}">
+                                    {% if prediction.risk_class %}High Risk{% else %}Low Risk{% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">No prediction history available</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Prepare data for charts
+        const predictions = [
+            {% for prediction in predictions %}
+            {
+                date: "{{ prediction.date|date:'M d, Y' }}",
+                type: "{{ prediction.prediction_type }}",
+                confidence: "{{ prediction.confidence_score }}",
+                risk: "{{ prediction.risk_class }}",
+                predicted: "{{ prediction.predicted_name }}"
+            },
+            {% endfor %}
+        ];
+
+        // Group predictions by type
+        const groupedData = {
+            lab: predictions.filter(p => p.type === 'lab'),
+            ecg: predictions.filter(p => p.type === 'ecg'),
+            chest: predictions.filter(p => p.type === 'chest')
+        };
+
+        // Initialize charts
+        initOverallCharts();
+        initPerTypeCharts();
+
+        function initOverallCharts() {
+            // Confidence Trend Chart
+            const confidenceCtx = document.getElementById('confidenceChart');
+            if (confidenceCtx) {
+                new Chart(confidenceCtx, {
+                    type: 'line',
+                    data: {
+                        labels: predictions.map(p => p.date),
+                        datasets: [{
+                            label: 'Confidence Score',
+                            data: predictions.map(p => p.confidence_score),
+                            borderColor: '#4673df',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                min: 0,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: 'Confidence (%)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Type Distribution Chart
+            const typeCtx = document.getElementById('typeChart');
+            if (typeCtx) {
+                new Chart(typeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Lab Analysis', 'ECG Scan', 'Chest Scan'],
+                        datasets: [{
+                            data: [
+                                groupedData.lab.length,
+                                groupedData.ecg.length,
+                                groupedData.chest.length
+                            ],
+                            backgroundColor: ['#4673df', '#1cc88a', '#36b9cc'],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
+        }
+
+        function initPerTypeCharts() {
+            // Initialize confidence charts per type
+            initConfidenceChart('labConfidenceChart', groupedData.lab, 'Lab Confidence');
+            initConfidenceChart('ecgConfidenceChart', groupedData.ecg, 'ECG Confidence');
+            initConfidenceChart('chestConfidenceChart', groupedData.chest, 'Chest Confidence');
+            
+            // Initialize risk charts per type
+            initRiskChart('labRiskChart', groupedData.lab, 'Lab Risk');
+            initRiskChart('ecgRiskChart', groupedData.ecg, 'ECG Risk');
+            initRiskChart('chestRiskChart', groupedData.chest, 'Chest Risk');
+        }
+
+        function initConfidenceChart(canvasId, data, label) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            
+            if (data.length === 0) {
+                ctx.closest('.card').innerHTML = '<div class="alert alert-info">No data available</div>';
+                return;
+            }
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(p => p.date),
+                    datasets: [{
+                        label: label,
+                        data: data.map(p => p.confidence),
+                        borderColor: '#4673df',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Confidence (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initRiskChart(canvasId, data, label) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            
+            if (data.length === 0) {
+                ctx.closest('.card').innerHTML = '<div class="alert alert-info">No data available</div>';
+                return;
+            }
+            
+            const highRisk = data.filter(p => p.risk).length;
+            const lowRisk = data.length - highRisk;
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['High Risk', 'Low Risk'],
+                    datasets: [{
+                        label: label,
+                        data: [highRisk, lowRisk],
+                        backgroundColor: ['#e74a3b', '#1cc88a'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+    });
+    
+    // PDF Generation
+    function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'a4');
+        const content = document.querySelector('.report-container');
+
+        // Wait for charts to render
+        setTimeout(() => {
+            doc.html(content, {
+                callback: function(doc) {
+                    doc.save('patient-report-{{ patient.serial_no }}.pdf');
+                },
+                margin: [20, 20, 20, 20],
+                autoPaging: 'text',
+                width: 595,
+                windowWidth: content.scrollWidth,
+                html2canvas: {
+                    scale: 0.7,
+                    useCORS: true
+                }
+            });
+        }, 1000);
+    }
+</script>
+
+<style>
+.report-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+}
+
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #e3e6f0;
+    padding-bottom: 1rem;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.result-card {
+    border-left: 4px solid #4e73df;
+}
+
+canvas {
+    max-width: 100%;
+    margin: 0 auto;
+    display: block;
+}
+
+.mb-1 {
+    font-weight: bolder;
+}
+
+.card-title {
+    margin-bottom: 1.5rem;
+}
+</style>
+{% endblock %}

@@ -100,7 +100,8 @@
 
                 // console.log(response.template_name)
 
-                window.location.href = data.redirect_url;
+                // window.location.href = "{% url 'report-reports' %}";
+                window.location.href = data.redirect_url
             } else {
                 console.log(response)
                 const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
