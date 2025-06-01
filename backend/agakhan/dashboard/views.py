@@ -132,6 +132,11 @@ class PractitionerViewset(ModelViewSet):
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='signup.html')
             return Response({'error': 'Check your credentials!'}, template_name='signin.html',status=status.HTTP_401_UNAUTHORIZED)
         return Response({'branches': branches}, status=status.HTTP_200_OK, template_name='signin.html')
+    
+    @action(methods=['get'], detail=False, url_name='signout', renderer_classes = [TemplateHTMLRenderer])
+    def signout(self, request):
+        logout(request)
+        return Response(status=status.HTTP_200_OK, template_name='signin.html')
         
     @action(methods=['post'], detail=False, url_name='resend_otp', renderer_classes = [TemplateHTMLRenderer],)
     def resend_otp(self, request):
