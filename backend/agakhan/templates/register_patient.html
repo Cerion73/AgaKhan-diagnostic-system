@@ -84,7 +84,7 @@ document.getElementById('patientForm').addEventListener('submit', async (e) => {
     };
 
     try {
-        const response = await fetch('/api/patients/', {
+        const response = await fetch("url {% url 'patient-register_patient' %}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ document.getElementById('patientForm').addEventListener('submit', async (e) => {
         });
 
         if (response.ok) {
-            window.location.href = "{% url 'user-register_patient' %}";
+            window.location.href = "{% url 'patient-register_patient' %}";
         } else {
             const errorData = await response.json();
             alert(`Error: ${JSON.stringify(errorData)}`);

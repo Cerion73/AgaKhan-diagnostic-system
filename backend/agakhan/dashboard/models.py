@@ -122,6 +122,7 @@ class ECG(models.Model):
 class LabResults(models.Model):
     patient = models.ForeignKey('Patient', on_delete=models.SET_NULL, null=True)
     low_hdl = models.CharField(max_length=50, choices=YN_CHOICES, default='No')
+    hdl_reading = models.FloatField(default=47.0)
     high_ldl = models.CharField(max_length=50, choices=YN_CHOICES, default='No')
     chol_level = models.IntegerField()
     trig_level = models.IntegerField(max_length=100)
@@ -151,6 +152,9 @@ class Examination(models.Model):
     bp = models.IntegerField()
     date = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(Practitioner, on_delete=models.SET_NULL, null=True)
+    weight = models.FloatField(default=77.8)
+    height = models.FloatField(default=1.73)
+    abdominal_circ = models.FloatField(default=91.0)
 
     def __str__(self):
         return f'{self.patient.first_name} - {self.patient.location} - {self.patient.serial_no}'
@@ -159,6 +163,7 @@ class Prediction(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True)
     prediction_type = models.CharField(max_length=250, choices=PRED_TYPE, default='ecg')
     confidence_score = models.FloatField(default=0.0)
+    risk_conf_score = models.FloatField(default=0.0)
     predicted_class = models.IntegerField()
     predicted_name = models.CharField(max_length=200)
     classes_probabilities = models.CharField(max_length=500)

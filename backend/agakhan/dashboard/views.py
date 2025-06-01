@@ -60,12 +60,14 @@ class PractitionerViewset(ModelViewSet):
             password = serializer.validated_data['password']
             user = serializer.validated_data['user']
             branch = serializer.validated_data['branch']
+            branch = get_object_or_404(Branch, id=branch)
             
             print(user.serial_no)
-            user = authenticate(request, serial_no=user.serial_no, password=password, branch=branch)
-            print(user)
+            user_auth = authenticate(request, serial_no=user.serial_no, password=password, branch=branch)
 
             print(user.serial_no)
+            
+            
             login(request, user)
             phone_number = user.phone
 
@@ -73,19 +75,26 @@ class PractitionerViewset(ModelViewSet):
                 with transaction.atomic():
                     pract_user = get_object_or_404(Practitioner, user=user)
                     otp = str(secrets.randbelow(900000) + 100000)
+                    user_auth = get_object_or_404(CustomUser, serial_no=user.serial_no)
+                    user_auth.branch = branch
+                    user_auth.save()
                     pract_user.otp = otp
+                    print(otp)
                     pract_user.created_at = timezone.now()
                     pract_user.is_verified = False
-                    if timezone.now - pract_user.trial_start > timezone.timedelta(hours=6):
+                    
+                    if timezone.now() - pract_user.trial_start > timezone.timedelta(hours=6):
                         pract_user.trial_start = timezone.now()
+                        pract_user.trial_counter = 0
                     pract_user.save()
                     print(pract_user)
 
                     context['serial_no'] = user.serial_no
                     context['phone_number'] = user.phone
                     context['user'] = pract_user
+                    print(user.phone)
 
-                    if pract_user.trial_counter > 5 and timezone.now - pract_user.trial_start < timezone.timedelta(hours=6):
+                    if pract_user.trial_counter < 5 and timezone.now() - pract_user.trial_start < timezone.timedelta(hours=6):
                         ref_id = str(uuid.uuid4())
 
                         payload = {
@@ -109,6 +118,8 @@ class PractitionerViewset(ModelViewSet):
 
                         if response.status_code == 200:
                             print(response)
+                            pract_user.trial_counter += 1
+                            pract_user.save()
                             context['message'] = 'OTP sent successfully.'
                             return Response(context, template_name='otp_verify.html', status=status.HTTP_200_OK)
 
@@ -149,9 +160,10 @@ class PractitionerViewset(ModelViewSet):
                 pract_user.otp = otp
                 pract_user.created_at = timezone.now()
                 pract_user.is_verified = False
-                pract_user.trial_counter += 1
+                
                 if timezone.now - pract_user.trial_start > timezone.timedelta(hours=6):
                     pract_user.trial_start = timezone.now()
+                    pract_user.trial_counter = 0
                 pract_user.save()
 
 
@@ -182,6 +194,8 @@ class PractitionerViewset(ModelViewSet):
                     if response.status_code == 200:
                         # redirect to the same page
                         context['message'] = 'OTP sent successfully.'
+                        pract_user.trial_counter += 1
+                        pract_user.save()
                         return Response(context, template_name='otp_verify.html', status=status.HTTP_200_OK)
                     context['error'] = 'Failed to send OTP. Please try again.'
                     return Response(context,status=status.HTTP_500_INTERNAL_SERVER_ERROR, template_name='otp_verify.html')
@@ -267,7 +281,6 @@ class PractitionerViewset(ModelViewSet):
                     context['serial_no'] = practitioner_user.user.serial_no
                     context['phone_number'] = practitioner_user.user.phone
                     context['user'] = practitioner_user
-                    request.user = user
                     # request.session['otp_data'] = context
                     # request.session['from_user'] = user.serial_no
                     ref_id = str(uuid.uuid4())
@@ -299,6 +312,8 @@ class PractitionerViewset(ModelViewSet):
                     if code == 200:
                         print(request.session.get('from_user'))
                         print(phone_number, serial_no)
+                        practitioner_user.trial_counter = 1
+                        practitioner_user.save()
                         return Response(context, template_name='otp_verify.html', status=status.HTTP_200_OK)
                     else:
                         return Response({'error': 'Failed to send OTP. Please try again.', **context}, template_name='otp_request.html', status=status.HTTP_403_FORBIDDEN)
@@ -403,8 +418,9 @@ class LabResultsViewSet(ModelViewSet):
     @action(methods=['get', 'post'], detail=False, url_name='predict', url_path='predict.html', renderer_classes = [TemplateHTMLRenderer, JSONRenderer])
     def predict(self, request):
         # load the model and preprocessor
-        model_path = os.path.join(settings.BASE_DIR, 'models', 'best_model.h5')
+        model_path = os.path.join(settings.BASE_DIR, 'models', 'dnn_base_exam.h5')
         norm_model = tf.keras.models.load_model(model_path)
+        risk_model_extra = joblib.load(os.path.join(settings.BASE_DIR, 'models', 'xgb_base.pkl'))
         preprocessor = joblib.load('models/heart_preprocessor.pkl')
         if request.method == 'POST':
             serializer = PredTypeSerializer(data=request.data)
@@ -448,6 +464,10 @@ class LabResultsViewSet(ModelViewSet):
             fbs = lab.fasting_blood_sugar
             crp = lab.crp_level
             homo = lab.homo_level
+            weight = exam.weight
+            abdominal_circ = exam.abdominal_circ
+            height = exam.height
+            hdl_reading = lab.hdl_reading
             # attributes for predictions to be successful predictions
             columns = ['Age', 'Gender', 'Blood Pressure', 'Cholesterol Level',
                         'Exercise Habits', 'Smoking', 'Family Heart Disease', 'Diabetes', 'BMI',
@@ -456,17 +476,26 @@ class LabResultsViewSet(ModelViewSet):
                         'Sugar Consumption', 'Triglyceride Level', 'Fasting Blood Sugar',
                         'CRP Level', 'Homocysteine Level']
             data_df = pd.DataFrame([[age, gender, bp, chol, ex_habits, smoking, fam, diab, bmi, hpb, low_hdl, high_ldl, alc, stress,sleep, sugar, trig, fbs, crp, homo]], columns=columns)
-
+            column_risk = ['SEX', 'AGE', 'WEIGHT', 'HEIGHT', 'BMI', 'ABDOMINAL CIRCUMFERENCE', 'BLOOD PRESSURE', 'TOTAL CHOLESTEROL', 'HDL', 'FASTING BLOOD SUGAR', 'SMOKING']
+            gender = 1 if gender == 'M' else 0
+            smoking = 1 if smoking == 'Yes' else 0
+            data_risk = pd.DataFrame([[gender, age, weight, height, bmi, abdominal_circ, bp, chol, hdl_reading, fbs, smoking]], columns=column_risk)
             
             # preprocess the data and make predictions
             data_df = preprocessor.transform(data_df)
             probability = norm_model.predict(data_df)
+            risk_value = risk_model_extra.predict(data_risk)
+            risk_conf_score = np.max(risk_model_extra.predict_proba(data_risk))
+
+            risk_map = {'LOW': 0, 'INTERMEDIARY': 1, 'HIGH': 2}
+            risk_class = [key for key in  risk_map.keys() if risk_map[key] == risk_value][0]
+
             pred_class = int(probability >= 0.5)
             # classes = ['No', 'Yes']
             class_name = 'No' if pred_class == 0 else 'Yes'
             conf_score = np.round(probability if pred_class == 1 else 1 - probability, 4)
 
-            pred = Prediction.objects.create(patient=patient, prediction_type='lab', confidence_score= conf_score*100, predicted_class = pred_class, predicted_name=class_name, classes_probabilities=f'[{probability*100}, {(1 - probability)*100}]', risk_class=float(pred_class), disease_class=pred_class, date=timezone.now())
+            pred = Prediction.objects.create(patient=patient, prediction_type='lab', confidence_score= conf_score*100, predicted_class = pred_class, predicted_name=class_name, classes_probabilities=f'[{probability*100}, {(1 - probability)*100}]', risk_class=risk_map[risk_class], disease_class=pred_class, date=timezone.now(), risk_conf_score=risk_conf_score*100)
             print(pred.predicted_name)
 
             predictions = Prediction.objects.filter(patient=patient).order_by('-date')

@@ -89,6 +89,7 @@
                             <th>Prediction</th>
                             <th>Confidence</th>
                             <th>Risk Level</th>
+                            <th>Risk Level Confidence</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -97,12 +98,15 @@
                             <td>{{ prediction.date }}</td>
                             <td>{{ prediction.prediction_type }}</td>
                             <td>{{ prediction.predicted_name }}</td>
-                            <td>{{ prediction.confidence_score|floatformat:1 }}%</td>
+                            <td>{{ prediction.confidence_score|floatformat:2 }}%</td>
                             <td>
-                                <span class="badge {% if prediction.risk_class %}bg-danger{% else %}bg-success{% endif %}">
-                                    {% if prediction.risk_class %}High Risk{% else %}Low Risk{% endif %}
+                                <span class="badge {% if prediction.risk_class == 2%}bg-danger{% elif prediction.risk_class == 1 %}bg-warning {%else%}bg-success{% endif %}">
+                                    {% if prediction.risk_class == 2 %}High Risk
+                                    {% elif prediction.risk_class == 1 %}Moderate Risk
+                                    {% else %}Low Risk{% endif %}
                                 </span>
                             </td>
+                            <td>{{ prediction.risk_conf_score|floatformat:2 }}%</td>
                         </tr>
                         {% endfor %}
                     </tbody>

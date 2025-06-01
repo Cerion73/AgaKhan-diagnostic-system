@@ -57,59 +57,58 @@
 <div class="min-h-screen bg-gray-50 px-4 py-10 flex justify-center items-center" style="display: inline-flex; flex-direction: row; align-self: center; justify-content: center; align-items: center; margin-right: 0;">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-7xl">
       
-    <div style="display: flex; margin: 0 auto;">
+    <div style="margin: 0 auto;">
       <!-- Card 1: Register Patient -->
-      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center"  style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left; position: relative;" >
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center"  style="margin-bottom: 32px; border-radius: 24px; width: 100%; height: 420px; float: left; position: relative;" >
         <img src="{% static 'assets/patient.avif' %}" alt="Register Patient" class="w-full h-40 object-contain mb-4" style="height: 190px; width: 60%;"/>
         <h3 class="text-lg font-semibold">Register Patient</h3>
         <p class="text-sm text-gray-600 mb-4">Register a patient to get them ready for examination.</p>
-        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Register</button>
+        <a href="{% url 'patient-register_patient' %}"><button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Register</button></a>
       </div>
   
       <!-- Card 2: Record Patient's Demographics -->
-      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left;">
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; width: 100%; height: 420px; float: left;">
         <img src="{% static 'assets/exam.avif' %}" alt="Record Demographics" class="w-full h-40 object-contain mb-4"  style="height: 190px; width: 60%;"/>
         <h3 class="text-lg font-semibold">Record patient's demographics</h3>
         <p class="text-sm text-gray-600 mb-4">Fill patient's examination details.</p>
-        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;" >Add Record</button>
+        <a href="{% url 'med-exam-examination' %}"><button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;" >Add Record</button></a>
       </div>
     </div>
 
-    <div style="display: flex; margin: 0 auto;">
+    <div style="margin: 0 auto;">
       <!-- Card 3: Record Clinical Results -->
-      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left;">
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; width: 100%; height: 420px; float: left;">
         <img src="{% static 'assets/clinical.avif' %}" alt="Clinical Results" class="w-full h-40 object-contain mb-4" style="height: 190px; width: 60%;"/>
         <h3 class="text-lg font-semibold">Record Clinical Results</h3>
         <p class="text-sm text-gray-600 mb-4">Record patient's clinical assessment results.</p>
-        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Add Clinical Results</button>
+        <a href="{% url 'clinical-clinical_assessment' %}"><button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Add Clinical Results</button></a>
       </div>
     
   
       <!-- Card 4: Add Medical Imaging Scans -->
-      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left;">
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; width: 100%; height: 420px; float: left;">
         <img src="{% static 'assets/scans.avif' %}" alt="Medical Imaging Scans" class="w-full h-40 object-contain mb-4" style="height: 190px; width: 60%;"/>
         <h3 class="text-lg font-semibold">Add Medical Imaging Scans</h3>
         <p class="text-sm text-gray-600 mb-4">Fill out scan results and report.</p>
-        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Add Scans</button>
+        <a href="{% url 'ecg-ecg' %}"><button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Add Scans</button></a>
       </div>
     </div>
   
 
-    <div style="display: flex; margin: 0 auto;">
       <!-- Card 5: Add Laboratory Test Results -->
-      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left;">
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; width: 100%; height: 420px; float: left;">
         <img src="{% static 'assets/lab tests.avif' %}" alt="Lab Results" class="w-full h-40 object-contain mb-4" style="height: 190px; width: 60%;"/>
         <h3 class="text-lg font-semibold">Add Laboratory Test Results</h3>
         <p class="text-sm text-gray-600 mb-4">Record patient's lab test results.</p>
-        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Add Lab Results</button>
+        <a href="{% url 'lab-lab_results' %}"><button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;">Add Lab Results</button></a>
       </div>
   
       <!-- Card 6: Register Staff -->
-      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; margin-right: 46px; width: 100%; height: 420px; float: left; align-items: center; justify-content: center;">
-        <img src="{% static 'assets/doctor.avif' %}" alt="Register Staff" class="w-full h-40 object-contain mb-4" style="height: 190px; width: 60%;"/>
+      <div class="bg-white shadow rounded-2xl p-6 flex flex-col items-center justify-center text-center" style="margin-bottom: 32px; border-radius: 24px; width: 100%; height: 420px; float: left; align-items: center; justify-content: center;">
+        <img src="{% static 'assets/practs.avif' %}" alt="Register Staff" class="w-full h-40 object-contain mb-4" style="height: 190px; width: 60%;"/>
         <h3 class="text-lg font-semibold">Register Staff</h3>
         <p class="text-sm text-gray-600 mb-4">Register new staff to the system.</p>
-        <button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;" >Register</button>
+        <a href="{% url 'patient-register_patient' %}"><button class="bg-black text-white py-2 px-4 rounded-md" style="border-radius: 12px;" >Register</button></a>
       </div>
     </div>
   

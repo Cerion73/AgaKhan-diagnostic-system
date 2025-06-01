@@ -1,4 +1,4 @@
-{% extends 'dashboard.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block content %}
@@ -15,9 +15,9 @@
 
         <div class="flex flex-col sm:flex-row gap-4 justify-center mt-6">
             <!-- Proceed button -->
-            <a href="{% url 'next_step_url' %}" 
+            <a href="{% url '{{next_step}}' %}" 
                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl transition shadow-md font-medium">
-                Proceed
+                Proceed to {{next_name}}
             </a>
 
             <!-- Go home button -->
